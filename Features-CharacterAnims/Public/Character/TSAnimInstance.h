@@ -15,21 +15,27 @@ public:
 	virtual void NativeUpdateAnimation(float DeltaTime) override; //애니메이션	업데이트
 
 protected:
-	UPROPERTY(BlueprintReadOnly, Category="Character")
+	UPROPERTY(BlueprintReadOnly, Category="Toosin|Character")
 	class ATSCharacter* TSCharacter; //캐릭터 참조
-	UPROPERTY(BlueprintReadOnly, Category="Movement")
+	UPROPERTY(BlueprintReadOnly, Category="Toosin|Movement")
 	class UCharacterMovementComponent* CharacterMovement; //캐릭터 무브먼트 컴포넌트 참조
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
 	float GroundSpeed; //지상 속도
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
 	float LocomotionDirection;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
+	float SmoothedLocomotionDirection; // RInterpTo로 보간된 값 (AnimGraph용)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
 	float Direction; //이동 방향
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|State")
 	ETSCharacterState CharacterState; //캐릭터 상태
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|State")
 	ETSWeaponType WeaponType; //무기 타입
+
+
 private:
 	float Snap4Way(float Angle); //4방향 스냅 함수
-
+	void UpdateLocomotionDirection(float DeltaTime); //로코모션 방향 설정 함수
 };
