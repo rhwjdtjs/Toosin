@@ -32,7 +32,7 @@ void UTSAnimInstance::NativeUpdateAnimation(float DeltaTime)
         }
         CharacterState = TSCharacter->GetCharacterState();
         WeaponType = TSCharacter->GetWeaponType();
-
+        UpdateIKHandTransform(TSCharacter); //왼손 IK 트랜스폼 업데이트
     }
 }
 float UTSAnimInstance::Snap4Way(float Angle)
@@ -87,3 +87,44 @@ void UTSAnimInstance::UpdateLocomotionDirection(float DeltaTime)
         SmoothedLocomotionDirection += 360.0f; // 다시 0~360 범위로 복구
     }
 }
+void UTSAnimInstance::UpdateIKHandTransform(ATSCharacter* InCharacter)
+{
+    IKLeftHandAlpha = 0.f;
+    IKLeftHandEffectorLocation = FVector::ZeroVector;
+
+    if (!InCharacter) return;
+
+    ATSWeapon* Weapon = InCharacter->GetCurrentWeapon(); // 현재 장착된 무기 가져오기
+    if (!Weapon) return;
+
+    if (!(WeaponType == ETSWeaponType::TwoHandedSword ||
+        WeaponType == ETSWeaponType::TwoHandedAxe ||
+        WeaponType == ETSWeaponType::Polearm))
+    {
+        return;
+    }
+
+	if (!Weapon->HasLeftHandSocket()) return; // 왼손 소켓이 없으면 종료
+
+	USkeletalMeshComponent* CharMesh = InCharacter->GetMesh(); // 캐릭터 메쉬 가져오기
+	if (!CharMesh) return; // 안전 검사
+
+    // 1) 무기 소켓 월드 트랜스폼
+    const FTransform SocketWorld = Weapon->GetLeftHandSocketTransform(); // 월드라고 가정
+
+    // 2) 'hand_r' 기준 Bone Space로 변환 (ABP 설정과 1:1 매칭)
+    FVector BoneSpacePos;
+    FRotator BoneSpaceRot; // 필요 없으면 무시 가능
+
+	CharMesh->TransformToBoneSpace( // Bone Space 변환 함수
+		FName("hand_r"), // 우측 손 뼈대 이름
+		SocketWorld.GetLocation(), // 소켓 월드 위치
+		SocketWorld.Rotator(), // 소켓 월드 회전
+		BoneSpacePos, // out 위치
+		BoneSpaceRot // out 회전
+    );
+
+	IKLeftHandEffectorLocation = BoneSpacePos + IKLeftHandEffectorLocationOffset; // 오프셋 적용
+	IKLeftHandAlpha = 1.f; // IK 적용
+}
+

@@ -33,9 +33,15 @@ protected:
 	ETSCharacterState CharacterState; //캐릭터 상태
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|State")
 	ETSWeaponType WeaponType; //무기 타입
+	UPROPERTY(BlueprintReadOnly, Category = "Toosin|IK")
+	float IKLeftHandAlpha = 0.f;
 
-
+	UPROPERTY(BlueprintReadOnly, Category = "Toosin|IK")
+	FVector IKLeftHandEffectorLocation = FVector::ZeroVector;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toosin|IK")
+	FVector IKLeftHandEffectorLocationOffset = FVector::ZeroVector;
 private:
 	float Snap4Way(float Angle); //4방향 스냅 함수
 	void UpdateLocomotionDirection(float DeltaTime); //로코모션 방향 설정 함수
+	void UpdateIKHandTransform(ATSCharacter* InCharacter); //왼손 IK 트랜스폼 업데이트 함수
 };
