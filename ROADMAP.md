@@ -19,7 +19,7 @@
     - [x] **Data Driven**: `DataTable` 기반 스탯 관리 (Health, Stamina, Speed)
     - [x] **Input**: Enhanced Input 시스템 구축 (Dodge, Guard, Attack 바인딩)
 - **진행 중 (In Progress)**
-    - [ ] **Animation**: `TSAnimInstance` 구현, 블렌드 스페이스(Idle/Walk/Run), 몽타주 슬롯 설정
+    - [x] **Animation**: `TSAnimInstance` 구현, 블렌드 스페이스(Idle/Walk/Run), 몽타주 슬롯 설정
     - [ ] **Combo System**: 3연타 콤보 로직 (Light/Heavy), 콤보 타이밍 판정(`AnimNotify`)
     - [ ] **Action Montages**: 회피(구르기/스텝), 공격 애니메이션 연동
 
