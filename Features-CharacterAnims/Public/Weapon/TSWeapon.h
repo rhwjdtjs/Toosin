@@ -19,24 +19,34 @@ protected:
 public:	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Components")
 	class USceneComponent* Root;
-		//¹«±â ¸Ş½¬
+		//ë¬´ê¸° ë©”ì‰¬
 		UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Weapon")
-		class UStaticMeshComponent* WeaponMesh; // ¹«±â ¸Ş½¬ ÄÄÆ÷³ÍÆ®
+		class UStaticMeshComponent* WeaponMesh; // ë¬´ê¸° ë©”ì‰¬ ì»´í¬ë„ŒíŠ¸
 
-		// ¹«±â Å¸ÀÔ (¾ç¼Õ°Ë, µµ³¢ µî)
+		// ë¬´ê¸° íƒ€ì… (ì–‘ì†ê²€, ë„ë¼ ë“±)
 		UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Weapon")
-		ETSWeaponType WeaponType; // ¹«±â Å¸ÀÔ
+		ETSWeaponType WeaponType; // ë¬´ê¸° íƒ€ì…
 
-		//¿Ş¼Õ IK ¼ÒÄÏ ÀÌ¸§ ( ±âº»°ª: "LeftHandSocket")
+		//ì™¼ì† IK ì†Œì¼“ ì´ë¦„ ( ê¸°ë³¸ê°’: "LeftHandSocket")
 		UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Weapon")
-		FName LeftHandSocketName; // ¿Ş¼Õ IK ¼ÒÄÏ ÀÌ¸§
+		FName LeftHandSocketName; // ì™¼ì† IK ì†Œì¼“ ì´ë¦„
 
-		// ¿Ş¼Õ ¼ÒÄÏ  Transform ¹İÈ¯
+		// ì™¼ì† ì†Œì¼“  Transform ë°˜í™˜
 		UFUNCTION(BlueprintCallable, Category = "Toosin|Weapon")
 		FTransform GetLeftHandSocketTransform() const;
 		bool HasLeftHandSocket() const;
-		//¹«±â Å¸ÀÔ ¹İÈ¯
+		//ë¬´ê¸° íƒ€ì… ë°˜í™˜
 		UFUNCTION(BlueprintCallable, Category = "Toosin|Weapon")
 		FORCEINLINE ETSWeaponType GetWeaponType() const { return WeaponType; }
+
+		// ê³µê²© ëª½íƒ€ì£¼
+		UPROPERTY(EditDefaultsOnly, Category = "Toosin|Animation")
+		class UAnimMontage* LightAttackMontage; // ì¼ë°˜ ê³µê²©(ì½¤ë³´) ëª½íƒ€ì£¼
+
+		UPROPERTY(EditDefaultsOnly, Category = "Toosin|Animation")
+		class UAnimMontage* HeavyAttackMontage; // ê°•ê³µê²© ëª½íƒ€ì£¼
+
+		FORCEINLINE class UAnimMontage* GetLightAttackMontage() const { return LightAttackMontage; }
+		FORCEINLINE class UAnimMontage* GetHeavyAttackMontage() const { return HeavyAttackMontage; }
 
 };

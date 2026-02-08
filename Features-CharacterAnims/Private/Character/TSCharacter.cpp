@@ -14,45 +14,48 @@ ATSCharacter::ATSCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Ä«¸Ş¶ó ¼³Á¤
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); //Ä«¸Ş¶ó ºÕ »ı¼º
-	CameraBoom->SetupAttachment(RootComponent); //·çÆ® ÄÄÆ÷³ÍÆ®¿¡ ºÎÂø
-	CameraBoom->TargetArmLength = 400.0f; //Ä«¸Ş¶ó °Å¸® ¼³Á¤
-	CameraBoom->bUsePawnControlRotation = true; //È¸Àü¿¡ µû¶ó Ä«¸Ş¶ó È¸Àü
+	//ì¹´ë©”ë¼	ë¶ ì„¤ì •
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); 
+	CameraBoom->SetupAttachment(RootComponent); //ë£¨íŠ¸ ì»´í¬ë„ŒíŠ¸ì— ë¶€ì°©
+	CameraBoom->TargetArmLength = 400.0f; //ì¹´ë©”ë¼ì™€ ìºë¦­í„° ê°„ ê±°ë¦¬ ì„¤ì •
+	CameraBoom->bUsePawnControlRotation = true; //ì¹´ë©”ë¼ ë¡œí…Œì´ì…˜ì´ í°ì˜ ì»¨íŠ¸ë¡¤ ë¡œí…Œì´ì…˜ì„ ë”°ë¥´ë„ë¡ ì„¤ì •
 
-	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera")); //ÆÈ·Î¿ì Ä«¸Ş¶ó »ı¼º
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); //Ä«¸Ş¶ó ºÕ¿¡ ºÎÂø
-	FollowCamera->bUsePawnControlRotation = false; //Ä«¸Ş¶ó ÀÚÃ¼ È¸Àü ºñÈ°¼ºÈ­
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera")); //íŒ”ë¡œìš° ì¹´ë©”ë¼ ìƒì„±
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); //ì¹´ë©”ë¼ ë¶ì— ë¶€ì°©
+	FollowCamera->bUsePawnControlRotation = false; //ì¹´ë©”ë¼ ìì²´ íšŒì „ì€ ì‚¬ìš©í•˜ì§€ ì•ŠìŒ
+	// ì»¨íŠ¸ë¡¤ëŸ¬ íšŒì „ ì„¤ì •
+	bUseControllerRotationYaw = true; //ì»¨íŠ¸ë¡¤ëŸ¬ íšŒì „ ì‚¬ìš©
+	GetCharacterMovement()->bOrientRotationToMovement = false; //ì´ë™ ë°©í–¥ì— ë”°ë¼ íšŒì „í•˜ì§€ ì•ŠìŒ
 
-	// Ä³¸¯ÅÍ ¹«ºê¸ÕÆ® ¼³Á¤
-	bUseControllerRotationYaw = true; //ÄÁÆ®·Ñ·¯ È¸Àü¿¡ µû¶ó Ä³¸¯ÅÍ È¸Àü È°¼ºÈ­
-	GetCharacterMovement()->bOrientRotationToMovement = false; //ÀÌµ¿ ¹æÇâÀ¸·Î È¸Àü È°¼ºÈ­
-
-	//±âº»°ª ¼³Á¤
+	//ê¸°ë³¸ ê°’ ì„¤ì •
 	MaxHealth = 100.f;
 	CurrentHealth = MaxHealth;
 	MaxStamina = 100.f;
 	CurrentStamina = MaxStamina;
 
-	//±âº» Row Name ¼³Á¤
+	//ê¸°ë³¸ Row Name 
 	CharacterStatRowName = FName(TEXT("Default"));
-	CurrentState = ETSCharacterState::Idle; //ÃÊ±â »óÅÂ ¼³Á¤
-	CurrentWeaponType = ETSWeaponType::OneHanded; //ÃÊ±â ¹«±â Å¸ÀÔ ¼³Á¤
+	CurrentState = ETSCharacterState::Idle; //ì´ˆê¸° ìƒíƒœ
+	CurrentWeaponType = ETSWeaponType::OneHanded; //ì´ˆê¸° ë¬´ê¸° íƒ€ì…
 }
 
 void ATSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	//½ºÅÈ ÃÊ±âÈ­
-	InitializeStats(); //Data Table¿¡¼­ ½ºÅÈ ºÒ·¯¿À±â
-
+	ComboCount = 0; //ì½¤ë³´ ì¹´ìš´íŠ¸ ì´ˆê¸°í™”
+	bHasNextComboInput = false; //ë‹¤ìŒ ì½¤ë³´ ì…ë ¥ ì—†ìŒ
+	bAttackCooldown = false; //ê³µê²© ì¿¨ë‹¤ìš´ ì—†ìŒ
+	InitializeStats(); 
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->OnMontageEnded.AddDynamic(this, &ATSCharacter::OnAttackMontageEnded); //ì• ë‹ˆë©”ì´ì…˜ ëª½íƒ€ì£¼ ì¢…ë£Œ ì´ë²¤íŠ¸ ë°”ì¸ë”©
+	}
 	if(APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer())) //·ÎÄÃ ÇÃ·¹ÀÌ¾î ¼­ºê½Ã½ºÅÛ °¡Á®¿À±â
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer())) // ì…ë ¥ ì„œë¸Œì‹œìŠ¤í…œ ê°€ì ¸ì˜¤ê¸°
 		{
 			if(DefaultMappingContext)
-				Subsystem->AddMappingContext(DefaultMappingContext, 0); //ÀÔ·Â ¸ÅÇÎ ÄÁÅØ½ºÆ® Ãß°¡
+				Subsystem->AddMappingContext(DefaultMappingContext, 0); //ê¸°ë³¸ ë§¤í•‘ ì»¨í…ìŠ¤íŠ¸ ì¶”ê°€
 		}
 	}
 
@@ -62,10 +65,10 @@ void ATSCharacter::BeginPlay()
 		SpawnParams.Owner = this;
 		SpawnParams.Instigator = GetInstigator();
 
-		ATSWeapon* SpawedWeapon = GetWorld()->SpawnActor<ATSWeapon>(DefaultWeaponClass, GetActorTransform(), SpawnParams);
+		ATSWeapon* SpawedWeapon = GetWorld()->SpawnActor<ATSWeapon>(DefaultWeaponClass, GetActorTransform(), SpawnParams); //ë¬´ê¸° ìƒì„±
 		if (SpawedWeapon)
 		{
-			EquipWeapon(SpawedWeapon);
+			EquipWeapon(SpawedWeapon); //ë¬´ê¸° ì¥ì°©
 		}
 	}
 }
@@ -74,170 +77,187 @@ void ATSCharacter::InitializeStats()
 {
 	if (CharacterStatsTable)
 	{
-		// µ¥ÀÌÅÍ Å×ÀÌºí¿¡¼­ Row Ã£±â
-		static const FString ContextString(TEXT("Character Stats Context")); //ÄÁÅØ½ºÆ® ¹®ÀÚ¿­
-		FTSCharacterStats* Stats = CharacterStatsTable->FindRow<FTSCharacterStats>(CharacterStatRowName, ContextString, true); //Row Ã£±â
+		// ìºë¦­í„° ìŠ¤íƒ¯ ë°ì´í„° í…Œì´ë¸”ì—ì„œ Row ì°¾ê¸°
+		static const FString ContextString(TEXT("Character Stats Context")); //ì»¨í…ìŠ¤íŠ¸ ë¬¸ìì—´
+		FTSCharacterStats* Stats = CharacterStatsTable->FindRow<FTSCharacterStats>(CharacterStatRowName, ContextString, true); //Row ì°¾ê¸°
 		if (Stats)
 		{
-			MaxHealth = Stats->MaxHealth; //½ºÅÈ ¼³Á¤
-			MaxStamina = Stats->MaxStamina; //½ºÅÈ ¼³Á¤
-			WalkSpeed = Stats->WalkSpeed; //½ºÅÈ ¼³Á¤
-
-			// Àû¿ë
-			CurrentHealth = MaxHealth; //ÇöÀç Ã¼·Â ÃÊ±âÈ­
-			CurrentStamina = MaxStamina; //ÇöÀç ½ºÅÂ¹Ì³ª ÃÊ±âÈ­
-			GetCharacterMovement()->MaxWalkSpeed = WalkSpeed; //°È±â ¼Óµµ Àû¿ë
-
-			UE_LOG(LogTemp, Warning, TEXT("Stats Loaded from DataTable: Health=%f, Speed=%f"), MaxHealth, WalkSpeed); //·Î±× Ãâ·Â
+			MaxHealth = Stats->MaxHealth; // ìµœëŒ€ ì²´ë ¥ ì„¤ì •
+			MaxStamina = Stats->MaxStamina; // ìµœëŒ€ ìŠ¤íƒœë¯¸ë‚˜ ì„¤ì •
+			WalkSpeed = Stats->WalkSpeed; // ê±·ê¸° ì†ë„ ì„¤ì •
+			CurrentHealth = MaxHealth; // í˜„ì¬ ì²´ë ¥ ì´ˆê¸°í™”
+			CurrentStamina = MaxStamina; // í˜„ì¬ ìŠ¤íƒœë¯¸ë‚˜ ì´ˆê¸°í™”
+			GetCharacterMovement()->MaxWalkSpeed = WalkSpeed; // ìµœëŒ€ ê±·ê¸° ì†ë„ ì„¤ì •
 		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Stats Row Not Found: %s"), *CharacterStatRowName.ToString()); //Row¸¦ Ã£Áö ¸øÇßÀ» ¶§ ·Î±× Ãâ·Â
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CharacterStatsTable is NULL! Using default hardcoded values.")); //µ¥ÀÌÅÍ Å×ÀÌºíÀÌ ¾øÀ» ¶§ ·Î±× Ãâ·Â
 	}
 }
 
 void ATSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) //Enhanced Input ÄÄÆ÷³ÍÆ®·Î Ä³½ºÆÃ
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) //í–¥ìƒëœ ì…ë ¥ ì»´í¬ë„ŒíŠ¸ë¡œ ìºìŠ¤íŒ…
 	{
-		if (MoveAction) EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ATSCharacter::Move); //ÀÌµ¿ ¾×¼Ç ¹ÙÀÎµù
-		if (LookAction) EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ATSCharacter::Look); //½ÃÁ¡ Á¶ÀÛ ¾×¼Ç ¹ÙÀÎµù
-		if (DodgeAction) EnhancedInputComponent->BindAction(DodgeAction, ETriggerEvent::Started, this, &ATSCharacter::Dodge); //È¸ÇÇ ¾×¼Ç ¹ÙÀÎµù
-		if (GuardAction) //¹æ¾î ¾×¼Ç ¹ÙÀÎµù
+		if (MoveAction) EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ATSCharacter::Move); //ì´ë™ ì…ë ¥ ë°”ì¸ë”©
+		if (LookAction) EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ATSCharacter::Look); //ì‹œì  ì…ë ¥ ë°”ì¸ë”©
+		if (LightAttackAction) EnhancedInputComponent->BindAction(LightAttackAction, ETriggerEvent::Started, this, &ATSCharacter::LightAttack); //ê²½ê³µê²© ì…ë ¥ ë°”ì¸ë”©
+		if (HeavyAttackAction) EnhancedInputComponent->BindAction(HeavyAttackAction, ETriggerEvent::Started, this, &ATSCharacter::HeavyAttack); //ì¤‘ê³µê²© ì…ë ¥ ë°”ì¸ë”©
+		if (DodgeAction) EnhancedInputComponent->BindAction(DodgeAction, ETriggerEvent::Started, this, &ATSCharacter::Dodge); //íšŒí”¼ ì…ë ¥ ë°”ì¸ë”©
+		if (GuardAction) // ë°©ì–´ ì…ë ¥ ë°”ì¸ë”©
 		{
-			EnhancedInputComponent->BindAction(GuardAction, ETriggerEvent::Started, this, &ATSCharacter::GuardStart); //°¡µå ½ÃÀÛ
-			EnhancedInputComponent->BindAction(GuardAction, ETriggerEvent::Completed, this, &ATSCharacter::GuardEnd); //°¡µå Á¾·á
+			EnhancedInputComponent->BindAction(GuardAction, ETriggerEvent::Started, this, &ATSCharacter::GuardStart); //ê°€ë“œì‹œì‘
+			EnhancedInputComponent->BindAction(GuardAction, ETriggerEvent::Completed, this, &ATSCharacter::GuardEnd); //ê°€ë“œì¢…ë£Œ
 		}
-		if (LightAttackAction) EnhancedInputComponent->BindAction(LightAttackAction, ETriggerEvent::Started, this, &ATSCharacter::LightAttack); //ÀÏ¹İ°ø°İ ¾×¼Ç ¹ÙÀÎµù
-		if (HeavyAttackAction) EnhancedInputComponent->BindAction(HeavyAttackAction, ETriggerEvent::Started, this, &ATSCharacter::HeavyAttack); //°­°ø°İ ¾×¼Ç ¹ÙÀÎµù
+		
 	}
 }
 void ATSCharacter::Move(const FInputActionValue& Value)
 {
-	if (CurrentState == ETSCharacterState::Attacking || CurrentState == ETSCharacterState::Stunned || CurrentState == ETSCharacterState::Dead) //°ø°İ »óÅÂÀÌ°Å³ª, ½ºÅÏ »óÅÂÀÌ°Å³ª , Á×Àº»óÅÂ¿¡¼­´Â
-		return; //¿òÁ÷ÀÏ ¼ö ¾ø°Ô ¸®ÅÏÇÑ´Ù.
+	if (CurrentState == ETSCharacterState::Attacking || CurrentState == ETSCharacterState::Stunned || CurrentState == ETSCharacterState::Dead) // ê³µê²© ì¤‘, ê¸°ì ˆ ì¤‘, ì‚¬ë§ ìƒíƒœì—ì„œëŠ” ì´ë™ ë¶ˆê°€
+		return; // í•¨ìˆ˜ ì¢…ë£Œ
 
-	FVector2D MovementVector = Value.Get<FVector2D>(); //ÀÔ·Â°ªÀ» 2D º¤ÅÍ·Î °¡Á®¿Â´Ù.
-	if (GEngine)
+	FVector2D MovementVector = Value.Get<FVector2D>(); // ì…ë ¥ê°’ì„ 2D ë²¡í„°ë¡œ ë³€í™˜
+	if (Controller != nullptr) //ì»¨íŠ¸ë¡¤ëŸ¬ ìœ íš¨ì„± ê²€ì‚¬
 	{
-		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("Input: X=%.1f, Y=%.1f"), MovementVector.X, MovementVector.Y));
-	}
-	if (Controller != nullptr) //ÄÁÆ®·Ñ·¯°¡ À¯È¿ÇÏ´Ù¸é
-	{
-		const FRotator Rotation = Controller->GetControlRotation(); //ÄÁÆ®·Ñ·¯ÀÇ È¸Àü°ªÀ» °¡Á®¿Â´Ù.
-		const FRotator YawRotation(0, Rotation.Yaw, 0); //Yaw(¼öÆò) È¸Àü°ª¸¸ »ç¿ë
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X); //¾Õ ¹æÇâ º¤ÅÍ °è»ê
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y); //¿À¸¥ÂÊ ¹æÇâ º¤ÅÍ °è»ê
+		const FRotator Rotation = Controller->GetControlRotation(); //ì»¨íŠ¸ë¡¤ëŸ¬ íšŒì „ ê°’ ê°€ì ¸ì˜¤ê¸°
+		const FRotator YawRotation(0, Rotation.Yaw, 0); //Yaw() íšŒì „ ê°’ë§Œ ì‚¬ìš©
+		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X); //ì „ë°© ë°©í–¥ ë²¡í„°
+		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y); //ìš°ì¸¡ ë°©í–¥ ë²¡í„°
 
-		AddMovementInput(ForwardDirection, MovementVector.Y); //¾ÕµÚ ÀÌµ¿
-		AddMovementInput(RightDirection, MovementVector.X); //ÁÂ¿ì ÀÌµ¿
+		AddMovementInput(ForwardDirection, MovementVector.Y); //ì „ë°© ì´ë™
+		AddMovementInput(RightDirection, MovementVector.X); //ìš°ì¸¡ ì´ë™
 	}
 }
 
 void ATSCharacter::Look(const FInputActionValue& Value)
 {
-	FVector2D LookAxisVector = Value.Get<FVector2D>(); //ÀÔ·Â°ªÀ» 2D º¤ÅÍ·Î °¡Á®¿Â´Ù.
-	if (Controller != nullptr) //ÄÁÆ®·Ñ·¯°¡ À¯È¿ÇÏ´Ù¸é
+	FVector2D LookAxisVector = Value.Get<FVector2D>(); // ì…ë ¥ê°’ì„ 2D ë²¡í„°ë¡œ ë³€í™˜
+	if (Controller != nullptr) //ì»¨íŠ¸ë¡¤ëŸ¬ ìœ íš¨ì„± ê²€ì‚¬
 	{
-		AddControllerYawInput(LookAxisVector.X); //¼öÆò ½ÃÁ¡ Á¶ÀÛ
-		AddControllerPitchInput(LookAxisVector.Y); //¼öÁ÷ ½ÃÁ¡ Á¶ÀÛ
+		AddControllerYawInput(LookAxisVector.X); //ì¢Œìš° ì‹œì  ì´ë™
+		AddControllerPitchInput(LookAxisVector.Y); //ìƒí•˜ ì‹œì  ì´ë™
 	}
 }
 
 void ATSCharacter::Dodge()
 {
-	if (CurrentState == ETSCharacterState::Attacking || CurrentState == ETSCharacterState::Idle || CurrentState == ETSCharacterState::Moving) //°ø°İ »óÅÂÀÌ°Å³ª, ´ë±â »óÅÂÀÌ°Å³ª , ÀÌµ¿ »óÅÂÀÏ ¶§
+	if (CurrentState == ETSCharacterState::Attacking || CurrentState == ETSCharacterState::Idle || CurrentState == ETSCharacterState::Moving) // ê³µê²© ì¤‘, ëŒ€ê¸° ì¤‘, ì´ë™ ì¤‘	
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Dodge Action!")); //·Î±× Ãâ·Â
-		// ½ºÅÂ¹Ì³ª ¼Ò¸ğ ¹× ¸ùÅ¸ÁÖ Àç»ı ·ÎÁ÷ Ãß°¡ ¿¹Á¤
+		UE_LOG(LogTemp, Warning, TEXT("Dodge Action!")); //íšŒí”¼ ì•¡ì…˜!
+		// íšŒí”¼ êµ¬í˜„ ì˜ˆì •
 	}
 }
 
 void ATSCharacter::GuardStart()
 {
-	if (CurrentState == ETSCharacterState::Idle || CurrentState == ETSCharacterState::Moving) //´ë±â »óÅÂÀÌ°Å³ª , ÀÌµ¿ »óÅÂÀÏ ¶§
+	if (CurrentState == ETSCharacterState::Idle || CurrentState == ETSCharacterState::Moving) // ëŒ€ê¸° ì¤‘, ì´ë™ ì¤‘
 	{
-		SetCharacterState(ETSCharacterState::Blocking); //»óÅÂ¸¦ °¡µå »óÅÂ·Î º¯°æ
-		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed * 0.5f; //°¡µå ½Ã °È±â ¼Óµµ Àı¹İÀ¸·Î °¨¼Ò
-		UE_LOG(LogTemp, Warning, TEXT("Guard Start")); //·Î±× Ãâ·Â
+		SetCharacterState(ETSCharacterState::Blocking); //ìºë¦­í„°	ìƒíƒœë¥¼ ë°©ì–´ë¡œ ì„¤ì •
+		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed * 0.5f; //  ìµœëŒ€ ê±·ê¸° ì†ë„ ì ˆë°˜ìœ¼ë¡œ ì„¤ì •
+		UE_LOG(LogTemp, Warning, TEXT("Guard Start")); //ê°€ë“œ ì‹œì‘
 	}
 }
 
 void ATSCharacter::GuardEnd()
 {
-	if (CurrentState == ETSCharacterState::Blocking) //°¡µå »óÅÂÀÏ ¶§
+	if (CurrentState == ETSCharacterState::Blocking) // ë°©ì–´ ì¤‘
 	{
-		SetCharacterState(ETSCharacterState::Idle); //»óÅÂ¸¦ ´ë±â »óÅÂ·Î º¯°æ
-		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed; //°È±â ¼Óµµ ¿ø·¡´ë·Î º¹±¸
-		UE_LOG(LogTemp, Warning, TEXT("Guard End")); //·Î±× Ãâ·Â
+		SetCharacterState(ETSCharacterState::Idle); //ìºë¦­í„° ìƒíƒœë¥¼ ëŒ€ê¸°ë¡œ ì„¤ì •
+		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed; //ìµœëŒ€ ê±·ê¸° ì†ë„ ì›ë˜ëŒ€ë¡œ ì„¤ì •
+		UE_LOG(LogTemp, Warning, TEXT("Guard End")); //ê°€ë“œ ì¢…ë£Œ
 	}
 }
 
 void ATSCharacter::LightAttack()
 {
-	if (CurrentState == ETSCharacterState::Blocking) return; //°¡µå »óÅÂÀÏ ¶§´Â °ø°İ ºÒ°¡
-	UE_LOG(LogTemp, Warning, TEXT("Light Attack!")); //·Î±× Ãâ·Â
+	if (CurrentState == ETSCharacterState::Blocking || CurrentState == ETSCharacterState::Dead) return;
+	if (bAttackCooldown) return; // (ì¿¨íƒ€ì„ ì¤‘ì´ë©´ ê³µê²© ë¶ˆê°€)
+
+	if (!CurrentWeapon) return;
+
+	// ê³µê²© ì¤‘ì´ ì•„ë‹ˆë¼ë©´ -> 1íƒ€ ì‹œì‘
+	if (CurrentState != ETSCharacterState::Attacking)
+	{
+		GetCharacterMovement()->StopMovementImmediately(); // (ë¯¸ë„ëŸ¬ì§ ë°©ì§€)
+
+		CurrentState = ETSCharacterState::Attacking;
+		ComboCount = 1;
+		bHasNextComboInput = false; //ë‹¤ìŒ	ì½¤ë³´ ì…ë ¥ ì—†ìŒ
+
+		bUseControllerRotationYaw = false; // (ê³µê²© ì¤‘ íšŒì „ì€ ëª½íƒ€ì£¼ì— ë§¡ê¹€)
+
+		PerformCombo(ComboCount); //ì½¤ë³´ ì‹¤í–‰
+	}
+	// ì´ë¯¸ ê³µê²© ì¤‘ì´ë¼ë©´ -> ì…ë ¥ ì˜ˆì•½ (ë²„í¼ë§)
+	else
+	{
+		bHasNextComboInput = true; //ë‹¤ìŒ ì½¤ë³´ ì…ë ¥ ì˜ˆì•½
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Cyan, TEXT("Input Buffered!")); //ë””ë²„ê·¸ ë©”ì‹œì§€
+	}
 }
 
 void ATSCharacter::HeavyAttack()
 {
-	if (CurrentState == ETSCharacterState::Blocking) return; //°¡µå »óÅÂÀÏ ¶§´Â °ø°İ ºÒ°¡
-	UE_LOG(LogTemp, Warning, TEXT("Heavy Attack!")); //·Î±× Ãâ·Â
+	if (CurrentState == ETSCharacterState::Blocking) return;
+	
+	// ê°•ê³µê²©ì€ ì½¤ë³´ ì—†ì´ ë‹¨ë°œ ì‹¤í–‰
+	if (CurrentState == ETSCharacterState::Attacking) return;
+
+	if (CurrentWeapon)
+	{
+		if (UAnimMontage* Montage = CurrentWeapon->GetHeavyAttackMontage())
+		{
+			CurrentState = ETSCharacterState::Attacking; //ìƒíƒœë¥¼ ê³µê²©ìœ¼ë¡œ ì„¤ì •
+			PlayAnimMontage(Montage); //ê°•ê³µê²© ëª½íƒ€ì£¼ ì¬ìƒ
+		}
+	}
 }
 
 float ATSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	if (CurrentState == ETSCharacterState::Dead) return 0.0f; //ÀÌ¹Ì Á×Àº »óÅÂ¶ó¸é µ¥¹ÌÁö ¹«½Ã
+	if (CurrentState == ETSCharacterState::Dead) return 0.0f; // ì´ë¯¸ ì‚¬ë§í•œ ê²½ìš° ë°ë¯¸ì§€ ë¬´ì‹œ
 
-	if (CurrentState == ETSCharacterState::Blocking) //°¡µå »óÅÂ¶ó¸é
+	if (CurrentState == ETSCharacterState::Blocking) // ë°©ì–´ ì¤‘ì¸ ê²½ìš°
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Blocked Damage!")); //·Î±× Ãâ·Â
-		CurrentStamina -= DamageAmount * 0.5f; // ¿¹½Ã: ½ºÅÂ¹Ì³ª·Î µ¥¹ÌÁö ¹ŞÀ½
+		UE_LOG(LogTemp, Warning, TEXT("Blocked Damage!")); //ë°ë¯¸ì§€ ì°¨ë‹¨!
+		CurrentStamina -= DamageAmount * 0.5f; // ìŠ¤íƒœë¯¸ë‚˜ ê°ì†Œ
 		return 0.0f;
 	}
 
-	CurrentHealth = FMath::Clamp(CurrentHealth - ActualDamage, 0.0f, MaxHealth); //Ã¼·Â °¨¼Ò ¹× Å¬·¥ÇÁ
+	CurrentHealth = FMath::Clamp(CurrentHealth - ActualDamage, 0.0f, MaxHealth); // ì²´ë ¥ ê°ì†Œ ë° í´ë¨í”„
 
 	if (CurrentHealth <= 0.0f)
 	{
-		Die(); //»ç¸Á Ã³¸®
+		Die(); // ì‚¬ë§ ì²˜ë¦¬
 	}
-	return ActualDamage; //½ÇÁ¦ µ¥¹ÌÁö ¹İÈ¯
+	return ActualDamage; // ì‹¤ì œ ë°ë¯¸ì§€ ë°˜í™˜
 }
 
 void ATSCharacter::Die()
 {
-	SetCharacterState(ETSCharacterState::Dead); //»óÅÂ¸¦ Á×Àº »óÅÂ·Î º¯°æ
-	GetMesh()->SetSimulatePhysics(true); //¸Ş½¬¿¡ ¹°¸® ½Ã¹Ä·¹ÀÌ¼Ç È°¼ºÈ­
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision); //Ä¸½¶ Äİ¸®Àü ºñÈ°¼ºÈ­
+	SetCharacterState(ETSCharacterState::Dead); //ì‚¬ë§ ìƒíƒœë¡œ ì„¤ì •
+	GetMesh()->SetSimulatePhysics(true); //ë¬¼ë¦¬ ì‹œë®¬ë ˆì´ì…˜ í™œì„±í™”
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision); //ìº¡ìŠ ì½œë¦¬ì „ ë¹„í™œì„±í™”
 }
 
 void ATSCharacter::SetCharacterState(ETSCharacterState NewState)
 {
-	CurrentState = NewState; //»óÅÂ º¯°æ
+	CurrentState = NewState; // ìƒíƒœì„¤ì •
 }
 void ATSCharacter::SetWeaponType(ETSWeaponType NewType)
 {
-	CurrentWeaponType = NewType; //¹«±â Å¸ÀÔ º¯°æ
+	CurrentWeaponType = NewType; //ìƒíƒœì„¤ì •
 }
 void ATSCharacter::EquipWeapon(ATSWeapon* NewWeapon)
 {
 	if (NewWeapon)
 	{
-		CurrentWeapon = NewWeapon; //ÇöÀç ¹«±â ¼³Á¤
-		CurrentWeaponType = NewWeapon->GetWeaponType(); //¹«±â Å¸ÀÔ ¼³Á¤
-		// ¼ÒÄÏ¿¡ ºÎÂø (RightHandSocket °¡Á¤)
-		FName SocketName = FName("Sword"); // ÇÊ¿ä½Ã º¯°æ
-		NewWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepRelative, true), SocketName);
-		NewWeapon->SetOwner(this); //¼ÒÀ¯ÀÚ ¼³Á¤
+		CurrentWeapon = NewWeapon; //  
+		CurrentWeaponType = NewWeapon->GetWeaponType(); //í˜„ì¬	ë¬´ê¸° íƒ€ì… ì„¤ì •
+		FName SocketName = FName("Sword"); //ìš°ì¸¡ ì† ì†Œì¼“ ì´ë¦„
+		NewWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepRelative, true), SocketName); //ë¬´ê¸° ë¶€ì°©
+		NewWeapon->SetOwner(this); 
 	}
 }
 void ATSCharacter::Tick(float DeltaTime)
@@ -245,3 +265,67 @@ void ATSCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 }
+void ATSCharacter::PerformCombo(int32 SectionIndex)
+{
+	if (UAnimMontage* Montage = CurrentWeapon->GetLightAttackMontage()) //í˜„ì¬ ë¬´ê¸°ì˜ ê²½ê³µê²© ëª½íƒ€ì£¼ ê°€ì ¸ì˜¤ê¸°
+	{
+		FName SectionName = *FString::Printf(TEXT("Combo%d"), SectionIndex); //ì„¹ì…˜ ì´ë¦„ ìƒì„±
+
+		// ëª½íƒ€ì£¼ ì¬ìƒ (í•´ë‹¹ ì„¹ì…˜ìœ¼ë¡œ ì í”„)
+		PlayAnimMontage(Montage, 1.0f, SectionName); //ì¬ìƒ ì†ë„ 1.0f
+	}
+}
+void ATSCharacter::ContinueCombo()
+{
+	if (bHasNextComboInput) // (ë¯¸ë¦¬ ì…ë ¥í•´ë‘” ê²Œ ìˆë‹¤ë©´)
+	{
+		bHasNextComboInput = false; //ì˜ˆì•½ ì†Œë¹„)
+		ComboCount++;
+
+		if (ComboCount > 3)
+		{
+			// 3íƒ€ ë„˜ì–´ê°€ë©´ ì½¤ë³´ ë (ì—¬ê¸°ì„œ ë¦¬ì…‹í•˜ì§€ ì•Šê³  ëª½íƒ€ì£¼ ì¢…ë£Œì— ë§¡ê¹€)
+			return;
+		}
+
+		PerformCombo(ComboCount); //ì¶”ê°€ (ë‹¤ìŒ ì½¤ë³´ ì‹¤í–‰)
+	}
+}
+void ATSCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (bInterrupted) return; //ëª½íƒ€ì£¼ê°€ ì¤‘ë‹¨ë˜ì—ˆìœ¼ë©´ ë¬´ì‹œ
+	// ê³µê²© ëª½íƒ€ì£¼ê°€ ëë‚¬ì„ ë•Œ
+	if (CurrentState == ETSCharacterState::Attacking)
+	{
+		// ì½¤ë³´ ìƒíƒœ ì´ˆê¸°í™”
+		ComboCount = 0;
+		bHasNextComboInput = false; //ì¶”ê°€
+		bUseControllerRotationYaw = true; //ì¶”ê°€ (ë‹¤ì‹œ ë§ˆìš°ìŠ¤ íšŒì „ ê°€ëŠ¥)
+		SetCharacterState(ETSCharacterState::Idle);
+
+		// [í•µì‹¬] ê³µê²© í›„ ë”œë ˆì´(ì¿¨íƒ€ì„) ì ìš© -> ë°”ë¡œ ë‹¤ì‹œ ê³µê²© ëª»í•˜ê²Œ í•¨
+		bAttackCooldown = true; //ì¶”ê°€
+		GetWorldTimerManager().SetTimer(CooldownTimerHandle, this, &ATSCharacter::ResetAttackCooldown, AttackCooldownTime, false); //ì¶”ê°€
+
+		UE_LOG(LogTemp, Warning, TEXT("Combo Finished. Cooldown Started.")); //ì¶”ê°€
+	}
+}
+void ATSCharacter::ResetAttackCooldown() //ì¶”ê°€
+{
+	bAttackCooldown = false; //ì¶”ê°€ (ì¿¨íƒ€ì„ í•´ì œ)
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Green, TEXT("Attack Ready")); //ì¶”ê°€
+}
+void ATSCharacter::ResetCombo()
+{
+	// í”¼ê²© ë“±ìœ¼ë¡œ ê°•ì œ ì·¨ì†Œë  ë•Œ ì‚¬ìš©
+	ComboCount = 0;
+	bHasNextComboInput = false; //ì¶”ê°€
+	bAttackCooldown = false; //ì¶”ê°€
+
+	bUseControllerRotationYaw = true;
+	SetCharacterState(ETSCharacterState::Idle);
+	StopAnimMontage(); //ì¶”ê°€ (ëª½íƒ€ì£¼ ì¦‰ì‹œ ì •ì§€)
+}
+
+
+

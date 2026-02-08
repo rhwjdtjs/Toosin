@@ -8,22 +8,22 @@ void UTSAnimInstance::NativeInitializeAnimation()
 {
     Super::NativeInitializeAnimation();
 
-	TSCharacter = Cast<ATSCharacter>(TryGetPawnOwner()); //Ä³¸¯ÅÍ ¼ÒÀ¯ÀÚ °¡Á®¿À±â
+	TSCharacter = Cast<ATSCharacter>(TryGetPawnOwner()); //ìºë¦­í„° ì†Œìœ ì ê°€ì ¸ì˜¤ê¸°
     if (TSCharacter)
     {
-		CharacterMovement = TSCharacter->GetCharacterMovement(); //Ä³¸¯ÅÍ ¹«ºê¸ÕÆ® ÄÄÆ÷³ÍÆ® °¡Á®¿À±â
+		CharacterMovement = TSCharacter->GetCharacterMovement(); //ìºë¦­í„° ë¬´ë¸Œë¨¼íŠ¸ ì»´í¬ë„ŒíŠ¸ ê°€ì ¸ì˜¤ê¸°
     }
 }
 
 void UTSAnimInstance::NativeUpdateAnimation(float DeltaTime)
 {
     Super::NativeUpdateAnimation(DeltaTime);
-    if (TSCharacter == nullptr) TSCharacter = Cast<ATSCharacter>(TryGetPawnOwner()); //Ä³¸¯ÅÍ ¼ÒÀ¯ÀÚ ´Ù½Ã °¡Á®¿À±â
-	if (TSCharacter && CharacterMovement) //Ä³¸¯ÅÍ ¹× ¹«ºê¸ÕÆ® ÄÄÆ÷³ÍÆ®°¡ À¯È¿ÇÑ °æ¿ì
+    if (TSCharacter == nullptr) TSCharacter = Cast<ATSCharacter>(TryGetPawnOwner()); //ìºë¦­í„° ì†Œìœ ì ë‹¤ì‹œ ê°€ì ¸ì˜¤ê¸°
+	if (TSCharacter && CharacterMovement) //ìºë¦­í„° ë° ë¬´ë¸Œë¨¼íŠ¸ ì»´í¬ë„ŒíŠ¸ê°€ ìœ íš¨í•œ ê²½ìš°
     {
-		GroundSpeed = UKismetMathLibrary::VSizeXY(CharacterMovement->Velocity); // ¼öÆò ¼Óµµ Å©±â °è»ê
+		GroundSpeed = UKismetMathLibrary::VSizeXY(CharacterMovement->Velocity); // ìˆ˜í‰ ì†ë„ í¬ê¸° ê³„ì‚°
 
-        if (GroundSpeed > 3.0f) UpdateLocomotionDirection(DeltaTime); //·ÎÄÚ¸ğ¼Ç ¹æÇâ ¼³Á¤
+        if (GroundSpeed > 3.0f) UpdateLocomotionDirection(DeltaTime); //ë¡œì½”ëª¨ì…˜ ë°©í–¥ ì„¤ì •
         else
         {
             Direction = 0.0f;
@@ -32,7 +32,6 @@ void UTSAnimInstance::NativeUpdateAnimation(float DeltaTime)
         }
         CharacterState = TSCharacter->GetCharacterState();
         WeaponType = TSCharacter->GetWeaponType();
-        UpdateIKHandTransform(TSCharacter); //¿Ş¼Õ IK Æ®·£½ºÆû ¾÷µ¥ÀÌÆ®
     }
 }
 float UTSAnimInstance::Snap4Way(float Angle)
@@ -42,23 +41,23 @@ float UTSAnimInstance::Snap4Way(float Angle)
     {
         Normalized += 360.0f;
     }
-    // 4¹æÇâ ½º³À (´ë°¢¼± ÀÔ·Â ½Ã ¶³¸² ¹æÁö¸¦ À§ÇØ Àü¹æ ¿µ¿ªÀ» ´õ¿í ³Ğ°Ô ÀâÀ½ ¡¾60µµ)
-    // WA(315µµ), WD(45µµ) ÀÔ·ÂÀÌ °æ°è¼±¿¡¼­ ¶³¸®Áö ¾Ê°í È®½ÇÇÏ°Ô 'Àü¹æ(0)'À¸·Î ÆÇÁ¤µÇµµ·Ï ¼öÁ¤
+    // 4ë°©í–¥ ìŠ¤ëƒ… (ëŒ€ê°ì„  ì…ë ¥ ì‹œ ë–¨ë¦¼ ë°©ì§€ë¥¼ ìœ„í•´ ì „ë°© ì˜ì—­ì„ ë”ìš± ë„“ê²Œ ì¡ìŒ Â±60ë„)
+    // WA(315ë„), WD(45ë„) ì…ë ¥ì´ ê²½ê³„ì„ ì—ì„œ ë–¨ë¦¬ì§€ ì•Šê³  í™•ì‹¤í•˜ê²Œ 'ì „ë°©(0)'ìœ¼ë¡œ íŒì •ë˜ë„ë¡ ìˆ˜ì •
     if (Normalized >= 300.0f || Normalized < 60.0f)
     {
-        return 0.0f;    // ¾Õ (0µµ) -- [300 ~ 60 ¹üÀ§]
+        return 0.0f;    // ì• (0ë„) -- [300 ~ 60 ë²”ìœ„]
     }
     else if (Normalized >= 60.0f && Normalized < 120.0f)
     {
-        return 90.0f;   // ¿ì (90µµ) -- [60 ~ 120 ¹üÀ§]
+        return 90.0f;   // ìš° (90ë„) -- [60 ~ 120 ë²”ìœ„]
     }
     else if (Normalized >= 120.0f && Normalized < 240.0f)
     {
-        return 180.0f;  // µÚ (180µµ) -- [120 ~ 240 ¹üÀ§] (ÈÄ¹æµµ ³Ğ°Ô ÀâÀ½)
+        return 180.0f;  // ë’¤ (180ë„) -- [120 ~ 240 ë²”ìœ„] (í›„ë°©ë„ ë„“ê²Œ ì¡ìŒ)
     }
     else // 240.0f ~ 300.0f
     {  
-        return 270.0f;  // ÁÂ (270µµ) -- [240 ~ 300 ¹üÀ§]
+        return 270.0f;  // ì¢Œ (270ë„) -- [240 ~ 300 ë²”ìœ„]
     }
 }
 void UTSAnimInstance::UpdateLocomotionDirection(float DeltaTime)
@@ -67,64 +66,31 @@ void UTSAnimInstance::UpdateLocomotionDirection(float DeltaTime)
     FVector Velocity = CharacterMovement->Velocity;
     FVector Acceleration = CharacterMovement->GetCurrentAcceleration();
 
-    // °¡¼Óµµ(ÀÔ·Â)°¡ ÀÖÀ¸¸é ±×°ÍÀ» ±âÁØÀ¸·Î ¹æÇâ °è»ê (¸¶¿ì½º È¸Àü ½Ã º§·Î½ÃÆ¼ ·¢À¸·Î ÀÎÇÑ Æ¦ ¹æÁö)
+    // ê°€ì†ë„(ì…ë ¥)ê°€ ìˆìœ¼ë©´ ê·¸ê²ƒì„ ê¸°ì¤€ìœ¼ë¡œ ë°©í–¥ ê³„ì‚° (ë§ˆìš°ìŠ¤ íšŒì „ ì‹œ ë²¨ë¡œì‹œí‹° ë™ìœ¼ë¡œ ì¸í•œ íŠ ë°©ì§€)
     FVector DirectionVector = (Acceleration.SizeSquared() > 0.1f) ? Acceleration : Velocity;
     Direction = UKismetAnimationLibrary::CalculateDirection(DirectionVector, BaseRotation);
-    // 4¹æÇâ ½º³À Àû¿ë
-    LocomotionDirection = Snap4Way(Direction); // ½º³ÀµÈ ¸ñÇ¥ ¹æÇâ
-    // [Hysteresis] ÁÂÃø(300~360)¿¡¼­ Àü¹æ(0)À¸·Î ¿Ã ¶§, 0ÀÌ ¾Æ´Ñ 360À» À¯ÁöÇÏµµ·Ï °­Á¦
-    // (WA -> W ÀüÈ¯ ½Ã 360->0 Æ¢´Â Çö»ó ¹æÁö)
-    if (FMath::IsNearlyZero(LocomotionDirection) && SmoothedLocomotionDirection > 180.0f) // 0µµ ±ÙÃ³¿¡¼­ ÁÂÃø¿¡¼­ ¿Ã ¶§
+    // 4ë°©í–¥ ìŠ¤ëƒ… ì ìš©
+    LocomotionDirection = Snap4Way(Direction); // ìŠ¤ëƒ…ëœ ëª©í‘œ ë°©í–¥
+    // [Hysteresis] ì¢Œì¸¡(300~360)ì—ì„œ ì „ë°©(0)ìœ¼ë¡œ ì˜¬ ë•Œ, 0ì´ ì•„ë‹Œ 360ì„ ìœ ì§€í•˜ë„ë¡ ê°•ì œ
+    // (WA -> W ì „í™˜ ì‹œ 360->0 íŠ€ëŠ” í˜„ìƒ ë°©ì§€)
+    if (FMath::IsNearlyZero(LocomotionDirection) && SmoothedLocomotionDirection > 180.0f) // 0ë„ ê·¼ì²˜ì—ì„œ ì¢Œì¸¡ì—ì„œ ì˜¬ ë•Œ
     {
-        LocomotionDirection = 360.0f; // 360µµ·Î °­Á¦ ¼³Á¤
+        LocomotionDirection = 360.0f; // 360ë„ë¡œ ê°•ì œ ì„¤ì •
     }
-    FRotator CurrentRot = FRotator(0.0f, SmoothedLocomotionDirection, 0.0f); // ÇöÀç ½º¹«µùµÈ È¸Àü
-    FRotator TargetRot = FRotator(0.0f, LocomotionDirection, 0.0f); // ¸ñÇ¥ È¸Àü
-    FRotator ResultRot = FMath::RInterpTo(CurrentRot, TargetRot, DeltaTime, 10.0f); // º¸°£ ¼Óµµ 10.0
+    FRotator CurrentRot = FRotator(0.0f, SmoothedLocomotionDirection, 0.0f); // í˜„ì¬ ìŠ¤ë¬´ë”©ëœ íšŒì „
+    FRotator TargetRot = FRotator(0.0f, LocomotionDirection, 0.0f); // ëª©í‘œ íšŒì „
+    if(ETSWeaponType::OneHandedShield == WeaponType || ETSWeaponType::OneHanded == WeaponType)
+    {
+        InterpSpeed = 15.0f; // ë°©íŒ¨ ë“¤ê³  ìˆì„ ë•ŒëŠ” ë” ë¹ ë¥´ê²Œ ë°˜ì‘
+    }
+    else
+    {
+        InterpSpeed = 4.0f; // ê¸°ë³¸ ë³´ê°„ ì†ë„
+	}
+    FRotator ResultRot = FMath::RInterpTo(CurrentRot, TargetRot, DeltaTime, InterpSpeed); // ë³´ê°„ ì†ë„ 10.0
     SmoothedLocomotionDirection = ResultRot.Yaw;
     if (SmoothedLocomotionDirection < 0.0f)
     {
-        SmoothedLocomotionDirection += 360.0f; // ´Ù½Ã 0~360 ¹üÀ§·Î º¹±¸
+        SmoothedLocomotionDirection += 360.0f; // ë‹¤ì‹œ 0~360 ë²”ìœ„ë¡œ ë³µêµ¬
     }
 }
-void UTSAnimInstance::UpdateIKHandTransform(ATSCharacter* InCharacter)
-{
-    IKLeftHandAlpha = 0.f;
-    IKLeftHandEffectorLocation = FVector::ZeroVector;
-
-    if (!InCharacter) return;
-
-    ATSWeapon* Weapon = InCharacter->GetCurrentWeapon(); // ÇöÀç ÀåÂøµÈ ¹«±â °¡Á®¿À±â
-    if (!Weapon) return;
-
-    if (!(WeaponType == ETSWeaponType::TwoHandedSword ||
-        WeaponType == ETSWeaponType::TwoHandedAxe ||
-        WeaponType == ETSWeaponType::Polearm))
-    {
-        return;
-    }
-
-	if (!Weapon->HasLeftHandSocket()) return; // ¿Ş¼Õ ¼ÒÄÏÀÌ ¾øÀ¸¸é Á¾·á
-
-	USkeletalMeshComponent* CharMesh = InCharacter->GetMesh(); // Ä³¸¯ÅÍ ¸Ş½¬ °¡Á®¿À±â
-	if (!CharMesh) return; // ¾ÈÀü °Ë»ç
-
-    // 1) ¹«±â ¼ÒÄÏ ¿ùµå Æ®·£½ºÆû
-    const FTransform SocketWorld = Weapon->GetLeftHandSocketTransform(); // ¿ùµå¶ó°í °¡Á¤
-
-    // 2) 'hand_r' ±âÁØ Bone Space·Î º¯È¯ (ABP ¼³Á¤°ú 1:1 ¸ÅÄª)
-    FVector BoneSpacePos;
-    FRotator BoneSpaceRot; // ÇÊ¿ä ¾øÀ¸¸é ¹«½Ã °¡´É
-
-	CharMesh->TransformToBoneSpace( // Bone Space º¯È¯ ÇÔ¼ö
-		FName("hand_r"), // ¿ìÃø ¼Õ »À´ë ÀÌ¸§
-		SocketWorld.GetLocation(), // ¼ÒÄÏ ¿ùµå À§Ä¡
-		SocketWorld.Rotator(), // ¼ÒÄÏ ¿ùµå È¸Àü
-		BoneSpacePos, // out À§Ä¡
-		BoneSpaceRot // out È¸Àü
-    );
-
-	IKLeftHandEffectorLocation = BoneSpacePos + IKLeftHandEffectorLocationOffset; // ¿ÀÇÁ¼Â Àû¿ë
-	IKLeftHandAlpha = 1.f; // IK Àû¿ë
-}
-
