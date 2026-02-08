@@ -18,7 +18,6 @@
     - [x] **Movement**: WASD 이동, **Strafe(시선 고정)** 모드, 마우스 시점 반전
     - [x] **Data Driven**: `DataTable` 기반 스탯 관리 (Health, Stamina, Speed)
     - [x] **Input**: Enhanced Input 시스템 구축 (Dodge, Guard, Attack 바인딩)
-- **진행 중 (In Progress)**
     - [x] **Animation**: `TSAnimInstance` 구현, 블렌드 스페이스(Idle/Walk/Run), 몽타주 슬롯 설정
     - [x] **Combo System**: 3연타 콤보 로직 (Light/Heavy), 콤보 타이밍 판정(`AnimNotify`)
     - [x] **Action Montages**: 공격 애니메이션 연동 (회피 기능은 MVP-2로 이관)
