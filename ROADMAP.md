@@ -1,7 +1,7 @@
 # 📅 개발 로드맵 (Development Roadmap)
 
 ## 목표 (Objectives)
-- **완성**: 2026년 6월 ~ 7월
+- **완성**: 2026년 6월
 - **출시**: 2026년 7월 ~ 8월 (Steam)
 
 ## 📌 상세 개발 일정 (Detailed Schedule)
@@ -12,7 +12,7 @@
 
 #### 🟢 MVP-1: 캐릭터 파운데이션 & 기본 액션 (Foundation & Basic Actions)
 > **핵심**: "플레이어가 심리스하게 움직이고, 기본적인 공격 콤보를 수행할 수 있어야 한다."
-- **기간**: ~ 2026-02-07 (Target)
+- **기간**: 2026-02-02 ~ 2026-02-08 (Completed)
 - **완료된 작업 (Done)**
     - [x] **Character Setup**: `ATSCharacter` 클래스 구조 및 `UCombatComponent` 설계
     - [x] **Movement**: WASD 이동, **Strafe(시선 고정)** 모드, 마우스 시점 반전
@@ -21,10 +21,12 @@
 - **진행 중 (In Progress)**
     - [x] **Animation**: `TSAnimInstance` 구현, 블렌드 스페이스(Idle/Walk/Run), 몽타주 슬롯 설정
     - [x] **Combo System**: 3연타 콤보 로직 (Light/Heavy), 콤보 타이밍 판정(`AnimNotify`)
-    - [ ] **Action Montages**: 회피(구르기/스텝), 공격 애니메이션 연동
+    - [x] **Action Montages**: 공격 애니메이션 연동 (회피 기능은 MVP-2로 이관)
+
 
 #### 🟡 MVP-2: 전투 심화 & 상호작용 (Advanced Combat & Interaction)
 > **핵심**: "적을 때리고 막는 '타격감'과 '공방'을 구현한다."
+- [ ] **Action Montages**: 회피(구르기/스텝) 구현
 - [ ] **Defense Mechanics**:
     - 우클릭 방어(Guard) 상태 로직 및 피해 감소
     - 패링(Parry) 타이밍 판정 및 실행
