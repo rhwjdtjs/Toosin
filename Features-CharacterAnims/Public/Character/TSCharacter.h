@@ -7,7 +7,7 @@
 #include "Toosin/Public/Headers/ATSWeaponTypes.h"
 #include "TSCharacter.generated.h"
 
-//Ä³¸¯ÅÍ ±âº» ½ºÅÈ ±¸Á¶Ã¼
+//ìºë¦­í„° ê¸°ë³¸ ìŠ¤íƒ¯ êµ¬ì¡°ì²´
 USTRUCT(BlueprintType)
 struct FTSCharacterStats : public FTableRowBase
 {
@@ -15,16 +15,16 @@ struct FTSCharacterStats : public FTableRowBase
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MaxHealth = 100.f; //ÃÖ´ë Ã¼·Â
+	float MaxHealth = 100.f; //ìµœëŒ€ ì²´ë ¥
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MaxStamina = 100.f; //ÃÖ´ë ½ºÅÂ¹Ì³ª
+	float MaxStamina = 100.f; //ìµœëŒ€ ìŠ¤íƒœë¯¸ë‚˜
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float WalkSpeed = 400.f; //°È±â ¼Óµµ
+	float WalkSpeed = 400.f; //ê±·ê¸° ì†ë„
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float RunSpeed = 600.f; //´Ş¸®±â ¼Óµµ
+	float RunSpeed = 600.f; //ë‹¬ë¦¬ê¸° ì†ë„
 };
 
 
@@ -34,93 +34,116 @@ class TOOSIN_API ATSCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	ATSCharacter(); //»ı¼ºÀÚ
-	virtual void Tick(float DeltaTime) override; //Æ½ ÇÔ¼ö
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override; //ÀÔ·Â ¼³Á¤ ÇÔ¼ö
-	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override; //µ¥¹ÌÁö Ã³¸® ÇÔ¼ö
-	void InitializeStats(); //µ¥ÀÌÅÍ Å×ÀÌºí¿¡¼­ ½ºÅÈ ÃÊ±âÈ­ ÇÔ¼ö
+	ATSCharacter(); //ìƒì„±ì
+	virtual void Tick(float DeltaTime) override; //í‹± í•¨ìˆ˜
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override; //ì…ë ¥ ì„¤ì • í•¨ìˆ˜
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override; //ë°ë¯¸ì§€ ì²˜ë¦¬ í•¨ìˆ˜
+	void InitializeStats(); //ë°ì´í„° í…Œì´ë¸”ì—ì„œ ìŠ¤íƒ¯ ì´ˆê¸°í™” í•¨ìˆ˜
 
 	UFUNCTION(BlueprintCallable, Category = "Toosin|State")
-	FORCEINLINE ETSCharacterState GetCharacterState() const { return CurrentState; } //ÇöÀç »óÅÂ ¹İÈ¯ ÇÔ¼ö
+	FORCEINLINE ETSCharacterState GetCharacterState() const { return CurrentState; } //í˜„ì¬ ìƒíƒœ ë°˜í™˜ í•¨ìˆ˜
 	UFUNCTION(BlueprintCallable, Category = "Toosin|State")
 	FORCEINLINE ETSWeaponType GetWeaponType() const { return CurrentWeaponType; }
 	UFUNCTION(BlueprintCallable, Category = "Toosin|State")
-	void SetCharacterState(ETSCharacterState NewState); //ÇöÀç »óÅÂ ¼³Á¤ ÇÔ¼ö
+	void SetCharacterState(ETSCharacterState NewState); //í˜„ì¬ ìƒíƒœ ì„¤ì • í•¨ìˆ˜
 	UFUNCTION(BlueprintCallable, Category = "Toosin|State")
-	void SetWeaponType(ETSWeaponType NewType); //ÇöÀç ¹«±â Å¸ÀÔ ¼³Á¤ ÇÔ¼ö
+	void SetWeaponType(ETSWeaponType NewType); //í˜„ì¬ ë¬´ê¸° íƒ€ì… ì„¤ì • í•¨ìˆ˜
 
 	UFUNCTION(BlueprintCallable, Category = "Toosin|Weapon")
-	void EquipWeapon(class ATSWeapon* NewWeapon); //¹«±â ÀåÂø ÇÔ¼ö
-	FORCEINLINE class ATSWeapon* GetCurrentWeapon() const { return CurrentWeapon; } //ÇöÀç ÀåÂøµÈ ¹«±â ¹İÈ¯ ÇÔ¼ö
+	void EquipWeapon(class ATSWeapon* NewWeapon); //ë¬´ê¸° ì¥ì°© í•¨ìˆ˜
+	FORCEINLINE class ATSWeapon* GetCurrentWeapon() const { return CurrentWeapon; } //í˜„ì¬ ì¥ì°©ëœ ë¬´ê¸° ë°˜í™˜ í•¨ìˆ˜
 
-	//ÀÔ·Â Ã³¸® ÇÔ¼ö
+	//ì…ë ¥ ì²˜ë¦¬ í•¨ìˆ˜
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
+	void LightAttack();
+	void HeavyAttack();
 	void Dodge();
 	void GuardStart();
 	void GuardEnd();
-	void LightAttack();
-	void HeavyAttack();
 	void Die();
 
 protected:
 	virtual void BeginPlay() override;
+	void PerformCombo(int32 SectionIndex); //ì¶”ê°€
+	void ResetAttackCooldown(); //ì¶”ê°€
 public:
-    //Ä«¸Ş¶ó
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Camera")
-	class USpringArmComponent* CameraBoom; //Ä«¸Ş¶ó ºÕ
+	//ì¹´ë©”ë¼
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Camera")
+	class USpringArmComponent* CameraBoom; //ì¹´ë©”ë¼ ë¶
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Camera")
-	class UCameraComponent* FollowCamera; //ÆÈ·Î¿ì Ä«¸Ş¶ó
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Camera")
+	class UCameraComponent* FollowCamera; //íŒ”ë¡œìš° ì¹´ë©”ë¼
 
-    //ÀüÅõ
+	//ì „íˆ¬
 
-    //µ¥ÀÌÅÍ Å×ÀÌºí ¼³Á¤
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Toosin|Stats Data")
-	UDataTable* CharacterStatsTable; //Ä³¸¯ÅÍ ½ºÅÈ µ¥ÀÌÅÍ Å×ÀÌºí
+	//ë°ì´í„° í…Œì´ë¸” ì„¤ì •
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Toosin|Stats Data")
+	UDataTable* CharacterStatsTable; //ìºë¦­í„° ìŠ¤íƒ¯ ë°ì´í„° í…Œì´ë¸”
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Toosin|Stats Data")
-	FName CharacterStatRowName; //µ¥ÀÌÅÍ Å×ÀÌºíÀÇ Çà ÀÌ¸§
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Toosin|Stats Data")
+	FName CharacterStatRowName; //ë°ì´í„° í…Œì´ë¸”ì˜ í–‰ ì´ë¦„
 
-    //ÀÔ·Â ¾×¼Ç
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
-	class UInputMappingContext* DefaultMappingContext; //±âº» ÀÔ·Â ¸ÅÇÎ ÄÁÅØ½ºÆ®
+	//ì…ë ¥ ì•¡ì…˜
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
+	class UInputMappingContext* DefaultMappingContext; //ê¸°ë³¸ ì…ë ¥ ë§¤í•‘ ì»¨í…ìŠ¤íŠ¸
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
-	class UInputAction* MoveAction; //ÀÌµ¿ ¾×¼Ç
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
-	UInputAction* LookAction; //½ÃÁ¡ Á¶ÀÛ ¾×¼Ç
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
-	UInputAction* DodgeAction; //È¸ÇÇ ¾×¼Ç
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
-	UInputAction* GuardAction; //°¡µå ¾×¼Ç
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
-	UInputAction* LightAttackAction; //ÀÏ¹İ°ø°İ ¾×¼Ç
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
-	UInputAction* HeavyAttackAction; //°­°ø°İ ¾×¼Ç
-
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
+	class UInputAction* MoveAction; //ì´ë™ ì•¡ì…˜
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
+	UInputAction* LookAction; //ì‹œì  ì¡°ì‘ ì•¡ì…˜
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
+	UInputAction* LightAttackAction; //ì¼ë°˜ê³µê²© ì•¡ì…˜
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
+	UInputAction* HeavyAttackAction; //ê°•ê³µê²© ì•¡ì…˜
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
+	UInputAction* DodgeAction; //íšŒí”¼ ì•¡ì…˜
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
+	UInputAction* GuardAction; //ê°€ë“œ ì•¡ì…˜
 protected:
-    //½ºÅÈ
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Stats")
-	float MaxHealth; //ÃÖ´ë Ã¼·Â
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Stats")
-	float CurrentHealth; //ÇöÀç Ã¼·Â
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Stats")
-	float MaxStamina; //ÃÖ´ë ½ºÅÂ¹Ì³ª
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Stats")
-	float CurrentStamina; //ÇöÀç ½ºÅÂ¹Ì³ª
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
-	float WalkSpeed; //°È±â ¼Óµµ
+	//ìŠ¤íƒ¯
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Stats")
+	float MaxHealth; //ìµœëŒ€ ì²´ë ¥
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Stats")
+	float CurrentHealth; //í˜„ì¬ ì²´ë ¥
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Stats")
+	float MaxStamina; //ìµœëŒ€ ìŠ¤íƒœë¯¸ë‚˜
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Stats")
+	float CurrentStamina; //í˜„ì¬ ìŠ¤íƒœë¯¸ë‚˜
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
+	float WalkSpeed; //ê±·ê¸° ì†ë„
 
-    //»óÅÂ¸Ó½Å
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|State")
-	 ETSCharacterState CurrentState;
+	//ìƒíƒœë¨¸ì‹ 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|State")
-	 ETSWeaponType CurrentWeaponType;
-	 //ÇöÀç ÀåÂøµÈ ¹«±â
-	 UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Weapon")
-	 class ATSWeapon* CurrentWeapon; 
-	 // ±âº» ¹«±â Å¬·¡½º (¿¡µğÅÍ¿¡¼­ BP_GreatSword ÁöÁ¤)
-	 UPROPERTY(EditDefaultsOnly, Category = "Toosin|Weapon")
-	 TSubclassOf<ATSWeapon> DefaultWeaponClass;
+	ETSCharacterState CurrentState;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|State")
+	ETSWeaponType CurrentWeaponType;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Combat")
+	bool bHasNextComboInput; //ì¶”ê°€ (ì…ë ¥ ë²„í¼)
+
+	// [ê³µê²© í›„ë”œë ˆì´(ì¿¨íƒ€ì„) ì‹œìŠ¤í…œ]
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Combat")
+	bool bAttackCooldown; //ì¶”ê°€ (ì¿¨íƒ€ì„ ìƒíƒœ)
+
+	UPROPERTY(EditDefaultsOnly, Category = "Toosin|Combat")
+	float AttackCooldownTime = 0.5f; //ì¶”ê°€ (ê³µê²© í›„ 0.5ì´ˆê°„ ê³µê²© ë¶ˆê°€)
+
+	FTimerHandle CooldownTimerHandle; //ì¶”ê°€ (íƒ€ì´ë¨¸ í•¸ë“¤)
+	// ì½¤ë³´ ì‹œìŠ¤í…œ
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Combat")
+	int32 ComboCount; // í˜„ì¬ ì½¤ë³´ íšŸìˆ˜
+
+	UFUNCTION(BlueprintCallable, Category = "Toosin|Combat")
+	void ResetCombo(); // ì½¤ë³´ ì´ˆê¸°í™” (AnimNotifyì—ì„œ í˜¸ì¶œ)
+
+	UFUNCTION(BlueprintCallable, Category = "Toosin|Combat")
+	void ContinueCombo(); // ì½¤ë³´ ì²´í¬ (AnimNotifyì—ì„œ í˜¸ì¶œ)
+	UFUNCTION()
+	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Weapon")
+	class ATSWeapon* CurrentWeapon;
+	// ê¸°ë³¸ ë¬´ê¸° í´ë˜ìŠ¤ (ì—ë””í„°ì—ì„œ BP_GreatSword ì§€ì •)
+	UPROPERTY(EditDefaultsOnly, Category = "Toosin|Weapon")
+	TSubclassOf<ATSWeapon> DefaultWeaponClass;
 };
