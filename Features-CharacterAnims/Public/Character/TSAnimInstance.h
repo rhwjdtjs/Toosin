@@ -11,31 +11,43 @@ class TOOSIN_API UTSAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 	
 public:
-	virtual void NativeInitializeAnimation() override; //¾Ö´Ï¸ŞÀÌ¼Ç	ÃÊ±âÈ­
-	virtual void NativeUpdateAnimation(float DeltaTime) override; //¾Ö´Ï¸ŞÀÌ¼Ç	¾÷µ¥ÀÌÆ®
+	virtual void NativeInitializeAnimation() override; //ì• ë‹ˆë©”ì´ì…˜	ì´ˆê¸°í™”
+	virtual void NativeUpdateAnimation(float DeltaTime) override; //ì• ë‹ˆë©”ì´ì…˜	ì—…ë°ì´íŠ¸
 
 protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toosin|Settings")
+	float InterpSpeed = 4.0f; //ë³´ê°„ ì†ë„
 	UPROPERTY(BlueprintReadOnly, Category="Toosin|Character")
-	class ATSCharacter* TSCharacter; //Ä³¸¯ÅÍ ÂüÁ¶
+	class ATSCharacter* TSCharacter; //ìºë¦­í„° ì°¸ì¡°
 	UPROPERTY(BlueprintReadOnly, Category="Toosin|Movement")
-	class UCharacterMovementComponent* CharacterMovement; //Ä³¸¯ÅÍ ¹«ºê¸ÕÆ® ÄÄÆ÷³ÍÆ® ÂüÁ¶
+	class UCharacterMovementComponent* CharacterMovement; //ìºë¦­í„° ë¬´ë¸Œë¨¼íŠ¸ ì»´í¬ë„ŒíŠ¸ ì°¸ì¡°
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
-	float GroundSpeed; //Áö»ó ¼Óµµ
+	float GroundSpeed; //ì§€ìƒ ì†ë„
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
 	float LocomotionDirection;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
-	float SmoothedLocomotionDirection; // RInterpTo·Î º¸°£µÈ °ª (AnimGraph¿ë)
+	float SmoothedLocomotionDirection; // RInterpToë¡œ ë³´ê°„ëœ ê°’ (AnimGraphìš©)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Movement")
-	float Direction; //ÀÌµ¿ ¹æÇâ
+	float Direction; //ì´ë™ ë°©í–¥
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|State")
-	ETSCharacterState CharacterState; //Ä³¸¯ÅÍ »óÅÂ
+	ETSCharacterState CharacterState; //ìºë¦­í„° ìƒíƒœ
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|State")
-	ETSWeaponType WeaponType; //¹«±â Å¸ÀÔ
+	ETSWeaponType WeaponType; //ë¬´ê¸° íƒ€ì…
+	UPROPERTY(BlueprintReadOnly, Category = "Toosin|IK")
+	float IKLeftHandAlpha = 0.f;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Toosin|IK")
+	FVector IKLeftHandEffectorLocation = FVector::ZeroVector;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toosin|IK")
+	FVector IKLeftHandEffectorLocationOffset = FVector::ZeroVector;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Toosin|IK")
+	FVector IKLeftHandJointTargetLocation = FVector::ZeroVector; // íŒ”ê¿ˆì¹˜ ë°©í–¥ (Pole Vector)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toosin|IK")
+	float IKLeftHandAlphaMultiplier = 1.0f; // IK ê°•ë„ ì¡°ì ˆ ë³€ìˆ˜
 private:
-	float Snap4Way(float Angle); //4¹æÇâ ½º³À ÇÔ¼ö
-	void UpdateLocomotionDirection(float DeltaTime); //·ÎÄÚ¸ğ¼Ç ¹æÇâ ¼³Á¤ ÇÔ¼ö
+	float Snap4Way(float Angle); //4ë°©í–¥ ìŠ¤ëƒ… í•¨ìˆ˜
+	void UpdateLocomotionDirection(float DeltaTime); //ë¡œì½”ëª¨ì…˜ ë°©í–¥ ì„¤ì • í•¨ìˆ˜
 };
