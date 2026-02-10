@@ -63,7 +63,7 @@ float UTSAnimInstance::Snap4Way(float Angle)
 }
 void UTSAnimInstance::UpdateLocomotionDirection(float DeltaTime)
 {
-    FRotator BaseRotation = TSCharacter->GetActorRotation();
+       FRotator BaseRotation = TSCharacter->GetActorRotation();
     FVector Velocity = CharacterMovement->Velocity;
     FVector Acceleration = CharacterMovement->GetCurrentAcceleration();
 
