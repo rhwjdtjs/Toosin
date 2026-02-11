@@ -79,7 +79,7 @@ void ATSTrainingDummy::AttackPlayer()
 		if (CurrentWeapon)
 		{
 			// 0.4초는 너무 늦음(로그상 몽타주 길이가 0.4초였음). 0.1초로 수정.
-			GetWorldTimerManager().SetTimer(CollisionTimerHandle, this, &ATSTrainingDummy::EnableWeaponCollision, 0.1f, false);
+			GetWorldTimerManager().SetTimer(CollisionTimerHandle, this, &ATSTrainingDummy::EnableWeaponCollision, 1.0f, false);
 		}
 	}
 	else
@@ -94,7 +94,7 @@ void ATSTrainingDummy::EnableWeaponCollision()
 	{
 		CurrentWeapon->EnableCollision();
 		// 0.4초 뒤에 끄기
-		GetWorldTimerManager().SetTimer(CollisionTimerHandle, this, &ATSTrainingDummy::DisableWeaponCollision, 0.4f, false);
+		GetWorldTimerManager().SetTimer(CollisionTimerHandle, this, &ATSTrainingDummy::DisableWeaponCollision, 6.4f, false);
 	}
 }
 

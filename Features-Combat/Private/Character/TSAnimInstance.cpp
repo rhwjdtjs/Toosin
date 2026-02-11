@@ -13,6 +13,11 @@ void UTSAnimInstance::NativeInitializeAnimation()
     {
 		CharacterMovement = TSCharacter->GetCharacterMovement(); //캐릭터 무브먼트 컴포넌트 가져오기
     }
+    if (APawn* Owner = TryGetPawnOwner())
+    {
+        // 컴포넌트 미리 찾아두기 (매 프레임 찾지 않도록)
+        CombatComponent = Owner->FindComponentByClass<UTSCombatComponent>();
+    }
 }
 
 void UTSAnimInstance::NativeUpdateAnimation(float DeltaTime)
@@ -33,6 +38,23 @@ void UTSAnimInstance::NativeUpdateAnimation(float DeltaTime)
         CharacterState = TSCharacter->GetCharacterState();
 		bIsGuarding = (CharacterState == ETSCharacterState::Blocking); // 가드 상태 업데이트
         WeaponType = TSCharacter->GetWeaponType();
+    }
+    if (CombatComponent)
+    {
+        if (bIsGuarding) {
+            // [AO 안전장치] 끝값(-90, 90)에서 부동소수점 오차로 인한 블렌드 에러 방지
+            // 약간 안쪽으로 Clamp (예: 89.9도)
+            GuardAimYaw = FMath::Clamp(CombatComponent->GetGuardAimYaw(), -89.9f, 89.9f);
+            GuardAimPitch = FMath::Clamp(CombatComponent->GetGuardAimPitch(), -44.9f, 44.9f);
+        } else {
+            GuardAimYaw = 0.f;
+            GuardAimPitch = 0.f;
+        }
+
+        // [디버깅] 가드 상태 동기화 확인
+        if (bIsGuarding != (CharacterState == ETSCharacterState::Blocking)) {
+             UE_LOG(LogTemp, Warning, TEXT("[TSAnimInstance] State Sync Error: bIsGuarding(%d) != CharacterState(%d)"), bIsGuarding, (int32)CharacterState);
+        }
     }
 }
 float UTSAnimInstance::Snap4Way(float Angle)

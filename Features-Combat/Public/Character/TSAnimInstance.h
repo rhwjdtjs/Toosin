@@ -48,7 +48,14 @@ protected:
 	FVector IKLeftHandJointTargetLocation = FVector::ZeroVector; // 팔꿈치 방향 (Pole Vector)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toosin|IK")
 	float IKLeftHandAlphaMultiplier = 1.0f; // IK 강도 조절 변수
+	UPROPERTY(BlueprintReadOnly, Category = "Combat")
+	float GuardAimYaw;
+	UPROPERTY(BlueprintReadOnly, Category = "Combat")
+	float GuardAimPitch;
+
 private:
 	float Snap4Way(float Angle); //4방향 스냅 함수
 	void UpdateLocomotionDirection(float DeltaTime); //로코모션 방향 설정 함수
+	UPROPERTY()
+	class UTSCombatComponent* CombatComponent;
 };
