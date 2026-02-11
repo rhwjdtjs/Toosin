@@ -4,6 +4,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Toosin/Public/Character/TSCharacter.h"
+#include "Toosin/Public/Weapon/TSWeapon.h"
 
 UTSCombatComponent::UTSCombatComponent() {
     PrimaryComponentTick.bCanEverTick = true;
@@ -34,6 +35,20 @@ void UTSCombatComponent::BeginPlay() {
 
 void UTSCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+     // 가드 에임 오프셋을 매 프레임 업데이트 (카메라 방향 따름)
+    if (OwnerCharacter && bIsGuarding) {
+        FRotator ControlRot = OwnerCharacter->GetControlRotation();
+        FRotator ActorRot = OwnerCharacter->GetActorRotation();
+
+        // 컨트롤 회전에서 액터 회전을 뺀 값 (로컬 회전)
+        FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, ActorRot);
+
+        // Yaw: -90 ~ 90 범위 / Pitch: -45 ~ 45 범위 (AO_Guard 그리드에 맞춤)
+        GuardAimYaw = FMath::Clamp(DeltaRot.Yaw, -90.f, 90.f);
+        GuardAimPitch = FMath::Clamp(DeltaRot.Pitch, -45.f, 45.f);
+
+    }
 }
 
 void UTSCombatComponent::GuardStart() {
@@ -48,11 +63,28 @@ void UTSCombatComponent::GuardStart() {
     if (State == ETSCharacterState::Idle || State == ETSCharacterState::Moving) {
         bIsGuarding = true;
 
+        // [에임 즉시 계산] 첫 프레임부터 유효한 AO 값 보장 (AO 에러 방지)
+        FRotator ControlRot = OwnerCharacter->GetControlRotation();
+        FRotator ActorRot = OwnerCharacter->GetActorRotation();
+        FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, ActorRot);
+        GuardAimYaw = FMath::Clamp(DeltaRot.Yaw, -90.f, 90.f);
+        GuardAimPitch = FMath::Clamp(DeltaRot.Pitch, -45.f, 45.f);
+        
         bIsParryWindow = true;
         GetWorld()->GetTimerManager().SetTimer(ParryTimerHandle, this, &UTSCombatComponent::CloseParryWindow, ParryInputWindow, false);
 
         OwnerCharacter->SetCharacterState(ETSCharacterState::Blocking);
         OwnerCharacter->GetCharacterMovement()->MaxWalkSpeed = OwnerCharacter->GetWalkSpeed() * 0.5f;
+
+        // [무기 가드 콜리전] 무기↔무기 오버랩 활성화
+        if (ATSWeapon* Weapon = OwnerCharacter->GetCurrentWeapon()) {
+            Weapon->EnableGuardCollision();
+        }
+
+        if (OwnerCharacter && OwnerCharacter->GetCharacterMovement()) {
+            OwnerCharacter->bUseControllerRotationYaw = true; // 가드 중에는 카메라 방향 고정
+            OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = false; // 이동 방향 회전 끄기
+        }
 
         UE_LOG(LogTemp, Warning, TEXT("[TSCombatComp] Guard Start (Parry Window Open)"));
     }
@@ -75,10 +107,21 @@ void UTSCombatComponent::GuardEnd() {
         GuardAimYaw = 0.f;
         GuardAimPitch = 0.f;
 
+        // [무기 가드 콜리전 해제]
+        if (ATSWeapon* Weapon = OwnerCharacter->GetCurrentWeapon()) {
+            Weapon->DisableGuardCollision();
+        }
+
         bIsGuardOnCooldown = true;
         GetWorld()->GetTimerManager().SetTimer(GuardCooldownTimerHandle, this, &UTSCombatComponent::ResetGuardCooldown, GuardCooldownTime, false);
 
         UE_LOG(LogTemp, Warning, TEXT("[TSCombatComp] Guard End (쿨타임 %.1f초 시작)"), GuardCooldownTime);
+
+        // [이동 제어 복구] 가드 끝나면 다시 이동 방향으로 회전
+        if (OwnerCharacter && OwnerCharacter->GetCharacterMovement()) {
+             OwnerCharacter->bUseControllerRotationYaw = false; 
+             OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = true;
+        }
     }
 }
 
@@ -93,6 +136,12 @@ void UTSCombatComponent::OnParrySuccess(AActor *Attacker) {
     if (!OwnerCharacter) return;
 
     UE_LOG(LogTemp, Warning, TEXT("[TSCombatComp] Parry SUCCESS!"));
+
+    // [가드 상태 해제] 패링 성공 후 가드/AO_Guard 정리 (뒤뚱거림 방지)
+    GuardEnd();
+
+    // [패링 넉백]
+    OwnerCharacter->ApplyKnockback(Attacker);
 
     UGameplayStatics::SetGlobalTimeDilation(GetWorld(), ParryTimeDilation);
 
@@ -126,6 +175,29 @@ void UTSCombatComponent::UpdateGuardAim(AActor *Attacker) {
     GuardAimPitch = FMath::Clamp(DeltaRot.Pitch, -45.f, 45.f);
 
     UE_LOG(LogTemp, Log, TEXT("[TSCombatComp] Guard Aim Updated - Yaw:%.1f, Pitch:%.1f"), GuardAimYaw, GuardAimPitch);
+}
+
+// ========== [가드 아크 판정] ==========
+// 공격자 방향이 카메라(에임) 기준 가드 커버 범위 안인지 판정
+bool UTSCombatComponent::IsAttackInGuardArc(AActor *Attacker) const {
+    if (!OwnerCharacter || !Attacker) return false;
+
+    // 캐릭터→공격자 방향 벡터 (XY 평면)
+    FVector ToAttacker = Attacker->GetActorLocation() - OwnerCharacter->GetActorLocation();
+    ToAttacker.Z = 0.f;
+    ToAttacker.Normalize();
+
+    // 캐릭터가 바라보는 방향 (컨트롤 회전 = 카메라 방향)
+    FVector GuardDir = OwnerCharacter->GetControlRotation().Vector();
+    GuardDir.Z = 0.f;
+    GuardDir.Normalize();
+
+    // 두 벡터 사이의 각도 (0~180도)
+    float AngleDeg = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(ToAttacker, GuardDir)));
+
+    UE_LOG(LogTemp, Warning, TEXT("[TSCombatComp] 가드 아크 판정 - 공격자 각도: %.1f° / 커버 범위: ±%.1f°"), AngleDeg, GuardArcHalfAngle);
+
+    return AngleDeg <= GuardArcHalfAngle;
 }
 
 // ========== [피격 처리] ==========
@@ -167,8 +239,17 @@ float UTSCombatComponent::ProcessDamage(float DamageAmount, FDamageEvent const &
         UE_LOG(LogTemp, Warning, TEXT("[TSCombatComp] 가드 성공 - 데미지 경감 적용"));
 
         // 가드 히트 몽타주 재생 (경직/밀려남)
+        // 가드 히트 몽타주 재생 (경직/밀려남)
         if (OwnerCharacter && GuardHitMontage) {
-            OwnerCharacter->PlayAnimMontage(GuardHitMontage);
+            float Duration = OwnerCharacter->PlayAnimMontage(GuardHitMontage);
+            UE_LOG(LogTemp, Warning, TEXT("[TSCombatComp] 가드 히트 몽타주 재생 요청: %s (Duration: %.2f)"), *GuardHitMontage->GetName(), Duration);
+        } else {
+            UE_LOG(LogTemp, Warning, TEXT("[TSCombatComp] 가드 히트 몽타주 미설정 (GuardHitMontage is NULL)"));
+        }
+
+        // [가드 넉백]
+        if (OwnerCharacter) {
+            OwnerCharacter->ApplyKnockback(DamageCauser);
         }
 
         float GuardedDamage = DamageAmount * 0.2f;

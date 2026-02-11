@@ -63,6 +63,17 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Combat")
     float GuardAimPitch = 0.f; // 가드 에임 상하 방향
 
+    // [가드 아크] 가드 커버 범위 (에임 기준 좌우 반각, 기본 60도 = 총 120도 커버)
+    UPROPERTY(EditDefaultsOnly, Category = "Toosin|Combat")
+    float GuardArcHalfAngle = 60.f;
+
+    // [AnimInstance 연동] 스레드 안전성 확보를 위한 Getter
+    UFUNCTION(BlueprintCallable, Category = "Toosin|Combat")
+    FORCEINLINE float GetGuardAimYaw() const { return GuardAimYaw; }
+
+    UFUNCTION(BlueprintCallable, Category = "Toosin|Combat")
+    FORCEINLINE float GetGuardAimPitch() const { return GuardAimPitch; }
+
     // [전투 함수]
     UFUNCTION(BlueprintCallable, Category = "Toosin|Combat")
     void GuardStart();
@@ -81,6 +92,9 @@ public:
 
     // [가드 에임] 공격자 방향 기반 가드 에임 업데이트
     void UpdateGuardAim(AActor *Attacker);
+
+    // [가드 아크 판정] 공격자가 가드 커버 범위 안에 있는지 체크
+    bool IsAttackInGuardArc(AActor *Attacker) const;
 
     // [피격 처리]
     // 데미지 계산 및 리액션을 처리하고 최종 데미지를 반환

@@ -73,6 +73,16 @@ public:
     // [피격 리액션] 캐릭터별 피격 몽타주 재생
     void PlayHitReaction(AActor *DamageCauser);
 
+    // [피격 리액션 종료] 몽타주 끝나면 Stunned → Idle 복구
+    UFUNCTION()
+    void OnHitReactionEnded(UAnimMontage *Montage, bool bInterrupted);
+
+    // [넉백 적용] 공통 넉백 함수 (Launch + 자동 정지)
+    void ApplyKnockback(AActor *Source);
+
+    // [넉백 정지] 잔여 속도 제거
+    void StopKnockback();
+
      // [무기 콜리전 제어 함수] (AnimNotifyState에서 호출)
     void EnableWeaponCollision();
     void DisableWeaponCollision();
@@ -92,6 +102,18 @@ public:
     // [피격 몽타주] 캐릭터별 피격 리액션 몽타주 (에디터에서 설정)
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Toosin|Animation")
     class UAnimMontage *HitReactionMontage; // 피격 리액션 몽타주
+
+    // [넉백] 피격 시 밀림 설정 (에디터/블루프린트에서 조절 가능)
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Toosin|Combat")
+    float KnockbackStrength = 800.f; // 수평 밀림 강도
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Toosin|Combat")
+    float KnockbackUpForce = 50.f; // 위로 뜨는 힘
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Toosin|Combat")
+    float KnockbackStopDelay = 0.15f; // 넉백 후 속도 정지까지 딜레이 (초)
+
+    FTimerHandle KnockbackStopTimerHandle;
 
      // 데이터 테이블 설정
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Toosin|Stats Data")

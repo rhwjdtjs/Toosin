@@ -58,6 +58,9 @@ void ATSWeapon::BeginPlay() {
 void ATSWeapon::EnableCollision() {
     if (CollisionBox) {
         CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        // 공격 콜리전: Pawn(바디) + WorldDynamic(무기) 모두 Overlap 활성화
+        CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+        CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap);
         IgnoreActors.Empty();
 
         FVector BoxExtent = CollisionBox->GetScaledBoxExtent();
@@ -74,19 +77,43 @@ void ATSWeapon::DisableCollision() {
     }
 }
 
-void ATSWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult) {
-    if (OtherActor) {
-        UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] Overlap Event! OtherActor: %s, OtherComp: %s"), *OtherActor->GetName(), *OtherComp->GetName());
+void ATSWeapon::EnableGuardCollision() {
+    if (CollisionBox) {
+        CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        // Pawn(바디) 응답은 끄고, WorldDynamic(무기끼리)만 Overlap 유지
+        CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+        CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap);
+        IgnoreActors.Empty();
+        UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] Guard Collision Enabled (Weapon-to-Weapon Only)"));
     }
+}
 
+void ATSWeapon::DisableGuardCollision() {
+    if (CollisionBox) {
+        CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        // Pawn 응답 원래대로 복구 (다음 공격 시 EnableCollision에서 전부 켤 수 있도록)
+        CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+        IgnoreActors.Empty();
+        UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] Guard Collision Disabled"));
+    }
+}
+
+void ATSWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult) {
     if (!OtherActor || OtherActor == this || OtherActor == GetOwner()) return;
+
+    // [컴포넌트 필터] 전투 관련 컴포넌트만 처리 (무기 BoxComponent / 캐릭터 CapsuleComponent)
+    // 헬멧, 갑옷 등 메쉬 컴포넌트는 무시 (WorldDynamic이라 가드 콜리전에 걸림)
+    bool bIsWeaponComp = Cast<UBoxComponent>(OtherComp) != nullptr;
+    bool bIsBodyComp = Cast<UCapsuleComponent>(OtherComp) != nullptr;
+    if (!bIsWeaponComp && !bIsBodyComp) return;
 
     // 이미 이번 공격에 맞은 대상이면 무시
     if (IgnoreActors.Contains(OtherActor)) return;
     IgnoreActors.Add(OtherActor);
 
+    UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] Overlap - Actor: %s, Comp: %s"), *OtherActor->GetName(), *OtherComp->GetName());
+
     // ========== 1. 무기끼리 충돌 체크 (가드/패링) ==========
-    // 무기↔무기 충돌을 먼저 체크 (가드 성공 판정)
     ATSWeapon *OtherWeapon = Cast<ATSWeapon>(OtherActor);
     if (OtherWeapon) {
         ATSCharacter *OtherChar = Cast<ATSCharacter>(OtherWeapon->GetOwner());
@@ -99,78 +126,77 @@ void ATSWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *O
                 UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 패링 성공! %s의 패링 윈도우에 걸림"), *OtherChar->GetName());
                 OtherChar->GetCombatComponent()->OnParrySuccess(GetOwner());
 
-                // [가해자 무기 튕김] 공격한 쪽에 WeaponDeflectMontage 재생
                 ATSCharacter *AttackerChar = Cast<ATSCharacter>(GetOwner());
                 if (AttackerChar && WeaponDeflectMontage) {
                     AttackerChar->PlayAnimMontage(WeaponDeflectMontage);
                     UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 공격자 무기 튕김 몽타주 재생"));
                 }
-                return; // 패링 성공이면 데미지 없이 종료
+                return;
             }
 
-            // [가드 체크] 상대가 가드 중이면 가드 성공 (무기↔무기 충돌)
+            // [가드 체크] 상대가 가드 중이면 가드 성공
             if (OtherChar->GetCombatComponent() && OtherChar->GetCombatComponent()->bIsGuarding) {
                 IgnoreActors.Add(OtherChar);
 
                 UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 가드 성공 (무기↔무기 충돌) - %s"), *OtherChar->GetName());
 
-                // [가드 에임 업데이트] 공격 방향으로 가드 포즈 조절
                 OtherChar->GetCombatComponent()->UpdateGuardAim(GetOwner());
 
-                // 데미지 계산 후 가드 경감 적용
                 float BasePower = 0.f;
                 ATSCharacter *OwnerChar = Cast<ATSCharacter>(GetOwner());
-                if (OwnerChar) {
-                    BasePower = OwnerChar->GetBaseAttackPower();
-                }
+                if (OwnerChar) BasePower = OwnerChar->GetBaseAttackPower();
                 int32 CurrentCombo = OwnerChar ? OwnerChar->GetComboCount() : 0;
                 float FinalDamage = CalculateDamage(BasePower, CurrentCombo);
 
-                // 가드 성공: ProcessDamage에서 경감 처리 (bIsGuardPenetrated = false)
                 UGameplayStatics::ApplyDamage(OtherChar, FinalDamage, GetInstigatorController(), this, UDamageType::StaticClass());
 
-                // [가해자 무기 튕김] 가드 성공 시에도 공격한 쪽 무기 튕김
                 ATSCharacter *AttackerChar = Cast<ATSCharacter>(GetOwner());
                 if (AttackerChar && WeaponDeflectMontage) {
                     AttackerChar->PlayAnimMontage(WeaponDeflectMontage);
                     UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 가드 성공 - 공격자 무기 튕김 몽타주 재생"));
                 }
-                return; // 가드 처리 완료
+                return;
             }
         }
-        return; // 무기끼리 충돌했지만 가드/패링 아니면 무시
+        return;
     }
 
     // ========== 2. 캐릭터 바디 피격 처리 ==========
     if (OtherActor->IsA(ACharacter::StaticClass())) {
-        UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 캐릭터 바디 피격 감지: %s"), *OtherActor->GetName());
-
-        // 데미지 계산
         float BasePower = 0.f;
         ATSCharacter *OwnerChar = Cast<ATSCharacter>(GetOwner());
-        if (OwnerChar) {
-            BasePower = OwnerChar->GetBaseAttackPower();
-        }
+        if (OwnerChar) BasePower = OwnerChar->GetBaseAttackPower();
         int32 CurrentCombo = OwnerChar ? OwnerChar->GetComboCount() : 0;
         float FinalDamage = CalculateDamage(BasePower, CurrentCombo);
 
-        UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 데미지 계산 결과 - Base:%.1f, WeaponDmg:%.1f, Heavy:%s, Combo:%d → Final:%.1f"), BasePower, WeaponDamage, bIsHeavyAttack ? TEXT("Yes") : TEXT("No"), CurrentCombo, FinalDamage);
-
-        // [가드 관통 체크] 상대가 가드 중인데 바디에 직접 맞은 경우
         ATSCharacter *TargetChar = Cast<ATSCharacter>(OtherActor);
-        if (TargetChar && TargetChar->GetCombatComponent() && TargetChar->GetCombatComponent()->bIsGuarding) {
-            // 무기가 아닌 바디에 맞았으므로 가드 관통 → 풀 데미지
-            UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 가드 관통! 무기가 바디에 직접 맞음 → 풀 데미지 적용"));
-            TargetChar->GetCombatComponent()->ProcessDamage(FinalDamage, FDamageEvent(), GetInstigatorController(), this, true); // bIsGuardPenetrated = true
 
-            // 가드 관통 시 직접 체력 차감
-            float ActualDamage = FinalDamage; // 가드 경감 없이 풀 데미지
-            // TakeDamage를 통하지 않고 직접 처리하면 중복 방지
-            UGameplayStatics::ApplyDamage(OtherActor, FinalDamage, GetInstigatorController(), this, UDamageType::StaticClass());
+        // [가드 중 피격] → 에임 방향 기준 각도 판정
+        if (TargetChar && TargetChar->GetCombatComponent() && TargetChar->GetCombatComponent()->bIsGuarding) {
+            // 무기 오버랩에서 중복 처리 방지
+            if (TargetChar->GetCurrentWeapon()) IgnoreActors.Add(TargetChar->GetCurrentWeapon());
+
+            // [가드 아크 판정] 공격자가 가드 커버 범위 안인가?
+            if (TargetChar->GetCombatComponent()->IsAttackInGuardArc(GetOwner())) {
+                // 가드 성공 (에임 방향 안) → 데미지 경감
+                UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 가드 성공 (아크 범위 내) - %s"), *TargetChar->GetName());
+                UGameplayStatics::ApplyDamage(OtherActor, FinalDamage, GetInstigatorController(), this, UDamageType::StaticClass());
+
+                ATSCharacter *AttackerChar = Cast<ATSCharacter>(GetOwner());
+                if (AttackerChar && WeaponDeflectMontage) {
+                    AttackerChar->PlayAnimMontage(WeaponDeflectMontage);
+                }
+            } else {
+                // 가드 관통 (뒤쪽/옆구리 공격) → 풀 데미지
+                UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 가드 관통! (아크 범위 밖 = 뒤치기) - %s"), *TargetChar->GetName());
+                TargetChar->GetCombatComponent()->ProcessDamage(FinalDamage, FDamageEvent(), GetInstigatorController(), this, true);
+                UGameplayStatics::ApplyDamage(OtherActor, FinalDamage, GetInstigatorController(), this, UDamageType::StaticClass());
+            }
             return;
         }
 
         // 일반 피격
+        UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 일반 피격 - %s, 데미지: %.1f"), *OtherActor->GetName(), FinalDamage);
         UGameplayStatics::ApplyDamage(OtherActor, FinalDamage, GetInstigatorController(), this, UDamageType::StaticClass());
     }
 }

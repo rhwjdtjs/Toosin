@@ -241,24 +241,97 @@ void ATSCharacter::Die() {
 }
 
 // ========== [피격 리액션 몽타주 재생] ==========
-// 캐릭터별로 설정된 HitReactionMontage를 재생
-// 공격 중이거나 사망 상태에서는 재생하지 않음
+// Stunned 상태 설정 + 넉백 + 몽타주 종료 시 복구
 void ATSCharacter::PlayHitReaction(AActor *DamageCauser) {
-    // 사망 상태면 무시
     if (CurrentState == ETSCharacterState::Dead) return;
 
-    // 피격 몽타주가 설정되어 있으면 재생
-    if (HitReactionMontage) {
-        // 공격 중이었다면 공격 중단 (피격에 의한 강제 캔슬)
-        if (CurrentState == ETSCharacterState::Attacking) {
-            ResetCombo(); // 콤보 초기화 + 몽타주 정지
-        }
+    // 공격 중이었다면 공격 중단
+    if (CurrentState == ETSCharacterState::Attacking) {
+        ResetCombo();
+    }
 
+    // 가드 중이었다면 가드 해제
+    if (CurrentState == ETSCharacterState::Blocking && CombatComponent) {
+        CombatComponent->GuardEnd();
+    }
+
+    // [경직] Stunned 상태로 전환 → 이동/공격/가드 불가
+    SetCharacterState(ETSCharacterState::Stunned);
+
+    // [넉백]
+    ApplyKnockback(DamageCauser);
+
+    // [몽타주 재생 + 종료 콜백]
+    if (HitReactionMontage) {
         PlayAnimMontage(HitReactionMontage);
         UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 피격 리액션 몽타주 재생: %s"), *HitReactionMontage->GetName());
+
+        // 몽타주 끝나면 OnHitReactionEnded 호출
+        if (UAnimInstance *AnimInst = GetMesh()->GetAnimInstance()) {
+            FOnMontageEnded EndDelegate;
+            EndDelegate.BindUObject(this, &ATSCharacter::OnHitReactionEnded);
+            AnimInst->Montage_SetEndDelegate(EndDelegate, HitReactionMontage);
+        }
     } else {
-        UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] HitReactionMontage 미설정 - 피격 리액션 생략"));
+        UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] HitReactionMontage 미설정 - 즉시 Idle 복구"));
+        SetCharacterState(ETSCharacterState::Idle);
     }
+}
+
+// ========== [피격 리액션 종료] ==========
+void ATSCharacter::OnHitReactionEnded(UAnimMontage *Montage, bool bInterrupted) {
+    if (CurrentState == ETSCharacterState::Stunned) {
+        SetCharacterState(ETSCharacterState::Idle);
+        UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 피격 경직 해제 → Idle 복구 (interrupted: %s)"), bInterrupted ? TEXT("Yes") : TEXT("No"));
+    }
+}
+
+// ========== [넉백 적용 - 공통 함수] ==========
+void ATSCharacter::ApplyKnockback(AActor *Source) {
+    if (!Source) return;
+
+    // 소스가 무기면 소유자(캐릭터) 위치 사용
+    AActor *AttackSource = Source->GetOwner() ? Source->GetOwner() : Source;
+    FVector KnockDir = GetActorLocation() - AttackSource->GetActorLocation();
+    KnockDir.Z = 0.f;
+    float Distance = KnockDir.Size();
+    KnockDir.Normalize();
+
+    // 거리 기반 스케일: 100유닛 이하 → 풀 넉백, 멀어질수록 감소 (최소 30%)
+    float DistScale = FMath::Clamp(1.0f - (Distance - 100.f) / 400.f, 0.3f, 1.0f);
+    FVector KnockVelocity = KnockDir * KnockbackStrength * DistScale;
+    KnockVelocity.Z = KnockbackUpForce;
+
+    LaunchCharacter(KnockVelocity, true, true);
+    UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 넉백 - 거리:%.0f, 스케일:%.1f%%, 강도:%.0f"), Distance, DistScale * 100.f, KnockbackStrength * DistScale);
+
+    // 잔여 속도 제거 타이머 (뒤뚱거림 방지)
+    GetWorldTimerManager().ClearTimer(KnockbackStopTimerHandle);
+    GetWorldTimerManager().SetTimer(KnockbackStopTimerHandle, this, &ATSCharacter::StopKnockback, KnockbackStopDelay, false);
+}
+
+// ========== [넉백 정지] ==========
+void ATSCharacter::StopKnockback() {
+    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+    if (!MoveComp) return;
+
+    // 수평 속도만 제거 (Z는 유지 → 자연스러운 착지)
+    FVector Vel = MoveComp->Velocity;
+    Vel.X = 0.f;
+    Vel.Y = 0.f;
+    MoveComp->Velocity = Vel;
+
+    // 가속도도 초기화 (잔여 이동 입력 방지)
+    MoveComp->StopActiveMovement();
+
+    // 착지 상태 보장 (Falling 모드에서 걸림 방지)
+    if (MoveComp->IsFalling()) {
+        MoveComp->SetMovementMode(MOVE_Walking);
+    }
+
+    // [회전 제어 복구] 뒤뚱거림 방지 (ResetCombo와 동일한 처리)
+    bUseControllerRotationYaw = true; 
+    UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 넉백 정지 - 회전 제어 복구"));
 }
 
 void ATSCharacter::SetCharacterState(ETSCharacterState NewState) {
