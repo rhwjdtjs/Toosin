@@ -74,7 +74,8 @@ void UTSCombatComponent::GuardStart() {
         GetWorld()->GetTimerManager().SetTimer(ParryTimerHandle, this, &UTSCombatComponent::CloseParryWindow, ParryInputWindow, false);
 
         OwnerCharacter->SetCharacterState(ETSCharacterState::Blocking);
-        OwnerCharacter->GetCharacterMovement()->MaxWalkSpeed = OwnerCharacter->GetWalkSpeed() * 0.5f;
+        // [이동 속도 조정] 가드 시 너무 느리지 않게 (85% 수준 유지)
+        OwnerCharacter->GetCharacterMovement()->MaxWalkSpeed = OwnerCharacter->GetWalkSpeed() * 0.85f;
 
         // [무기 가드 콜리전] 무기↔무기 오버랩 활성화
         if (ATSWeapon* Weapon = OwnerCharacter->GetCurrentWeapon()) {
@@ -139,6 +140,12 @@ void UTSCombatComponent::OnParrySuccess(AActor *Attacker) {
 
     // [가드 상태 해제] 패링 성공 후 가드/AO_Guard 정리 (뒤뚱거림 방지)
     GuardEnd();
+
+    // [AI 학습] 패링 데이터 수집
+    if (OwnerCharacter && OwnerCharacter->GetPlayerPatternComponent())
+    {
+        OwnerCharacter->GetPlayerPatternComponent()->RegisterDefense(false, true, false); // Guard=X, Parry=O, Hit=X
+    }
 
     // [패링 넉백 & 리액션]
     if (Attacker)

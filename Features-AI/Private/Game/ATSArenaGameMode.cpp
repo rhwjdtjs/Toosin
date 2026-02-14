@@ -8,6 +8,9 @@
 #include "GameFramework/PlayerController.h"
 #include "Toosin/Public/AI/ATSEnemyController.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "Toosin/Public/AI/TSAILearningSaveGame.h" // 추가
+#include "Toosin/Public/AI/TSPlayerPatternComponent.h" // 추가
+#include "EngineUtils.h" // TActorIterator용
 
 ATSArenaGameMode::ATSArenaGameMode()
 {
@@ -124,6 +127,28 @@ void ATSArenaGameMode::StartRound()
         // [카메라 리셋] 플레이어 컨트롤러의 회전도 스폰 포인트 방향으로 강제 설정
         // 이걸 해야 게임 처음 시작할 때처럼 정면을 바라봄
         PC->SetControlRotation(PlayerChar->GetActorRotation());
+        
+        // [AI 학습] 플레이어 데이터 리셋 (새 라운드 수집 시작)
+        if (PlayerChar->GetPlayerPatternComponent())
+        {
+            PlayerChar->GetPlayerPatternComponent()->ResetRoundData();
+        }
+    }
+    
+	// [AI 학습] 저장된 데이터 로드 및 AI에게 전달
+    if (UTSAILearningSaveGame* LoadGameInstance = Cast<UTSAILearningSaveGame>(UGameplayStatics::LoadGameFromSlot(UTSAILearningSaveGame::SaveSlotName, UTSAILearningSaveGame::UserIndex)))
+    {
+        // 월드에 있는 적 컨트롤러 찾기
+        for (TActorIterator<AATSEnemyController> It(GetWorld()); It; ++It)
+        {
+            AATSEnemyController* AIController = *It;
+            if (AIController)
+            {
+                // AIController에 데이터 전달
+                UE_LOG(LogTemp, Warning, TEXT("[AI_Learning] AI에게 학습 데이터 전달 (Rounds: %d)"), LoadGameInstance->TotalRoundsPlayed);
+                AIController->UpdatePlayerData(LoadGameInstance->AccumulatedData);
+            }
+        }
     }
 	}
 }
@@ -135,6 +160,34 @@ void ATSArenaGameMode::EndRound(AActor* Winner)
 	bIsRoundActive = false;
 	FString WinnerName = Winner ? Winner->GetName() : TEXT("None");
 	UE_LOG(LogTemp, Warning, TEXT("[Arena] Round Ended! Winner: %s"), *WinnerName);
+
+    // [AI 학습] 데이터 저장
+    // 1. 플레이어 컴포넌트에서 이번 라운드 데이터 가져오기
+    AController* PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+    if (PlayerController)
+    {
+        ATSCharacter* PlayerChar = Cast<ATSCharacter>(PlayerController->GetPawn());
+        if (PlayerChar && PlayerChar->GetPlayerPatternComponent())
+        {
+            FPlayerPatternData RoundData = PlayerChar->GetPlayerPatternComponent()->GetCurrentRoundData();
+            
+            // 2. SaveGame 로드 또는 생성
+            UTSAILearningSaveGame* SaveGameInstance = Cast<UTSAILearningSaveGame>(UGameplayStatics::LoadGameFromSlot(UTSAILearningSaveGame::SaveSlotName, UTSAILearningSaveGame::UserIndex));
+            if (!SaveGameInstance)
+            {
+                SaveGameInstance = Cast<UTSAILearningSaveGame>(UGameplayStatics::CreateSaveGameObject(UTSAILearningSaveGame::StaticClass()));
+            }
+            
+            // 3. 누적 및 저장
+            SaveGameInstance->AccumulatedData += RoundData;
+            SaveGameInstance->TotalRoundsPlayed++;
+             // 분석 결과 저장 (선택 사항, 저장 시점에 계산해서 넣어도 됨)
+            // SaveGameInstance->AI_Aggressiveness = ... 
+            
+            UGameplayStatics::SaveGameToSlot(SaveGameInstance, UTSAILearningSaveGame::SaveSlotName, UTSAILearningSaveGame::UserIndex);
+            UE_LOG(LogTemp, Warning, TEXT("[AI_Learning] 학습 데이터 저장 완료 (Total Rounds: %d)"), SaveGameInstance->TotalRoundsPlayed);
+        }
+    }
 
 	// 일정 시간 후 라운드 리셋
 	GetWorldTimerManager().SetTimer(RoundTimerHandle, this, &ATSArenaGameMode::ResetRound, RoundEndDelay, false);

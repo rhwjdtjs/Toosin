@@ -5,6 +5,7 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "Toosin/Public/Character/TSCombatComponent.h" // 컴포넌트 헤더 추가
+#include "Toosin/Public/AI/TSPlayerPatternComponent.h" // AI 학습 컴포넌트 헤더 추가
 #include "Toosin/Public/Headers/ATSWeaponTypes.h"
 #include "TSCharacter.generated.h"
 // 캐릭터 기본 스탯 구조체
@@ -205,6 +206,10 @@ protected:
       UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Components")
       class UTSCombatComponent *CombatComponent;
 
+    // [AI 학습용 데이터 수집 컴포넌트] (플레이어 전용)
+      UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Toosin|Components")
+      class UTSPlayerPatternComponent* PlayerPatternComponent;
+
   // 입력 액션
       UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Toosin|Input")
 
@@ -215,6 +220,9 @@ protected:
  public:
       // Getter for CombatComponent
       FORCEINLINE class UTSCombatComponent *GetCombatComponent() const { return CombatComponent; }
+
+    // Getter for PlayerPatternComponent
+      FORCEINLINE class UTSPlayerPatternComponent* GetPlayerPatternComponent() const { return PlayerPatternComponent; }
 
       // [락온 시스템]
       UFUNCTION(BlueprintCallable, Category = "Toosin|Combat")

@@ -23,6 +23,9 @@ ATSCharacter::ATSCharacter() {
     // Combat Component 생성
     CombatComponent = CreateDefaultSubobject<UTSCombatComponent>(TEXT("CombatComponent"));
 
+    // Pattern Component 생성 (AI 학습용 데이터 수집)
+    PlayerPatternComponent = CreateDefaultSubobject<UTSPlayerPatternComponent>(TEXT("PlayerPatternComponent"));
+
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera")); // 팔로우 카메라 생성
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // 카메라 붐에 부착
     FollowCamera->bUsePawnControlRotation = false; // 카메라 자체 회전은 사용하지 않음 컨트롤러 회전 설정
@@ -150,6 +153,12 @@ void ATSCharacter::Dodge() {
     {
         UE_LOG(LogTemp, Warning, TEXT("Dodge Action!")); // 회피 액션!
         // 회피 구현 예정
+        
+        // [AI 학습] 회피 기록
+        if (PlayerPatternComponent)
+        {
+            PlayerPatternComponent->RegisterDodge();
+        }
     }
 }
 
@@ -186,6 +195,12 @@ void ATSCharacter::LightAttack() {
             CurrentWeapon->bIsHeavyAttack = false; // 경공격임을 표시
         }
 
+        // [AI 학습] 경공격 기록
+        if (PlayerPatternComponent)
+        {
+            PlayerPatternComponent->RegisterAttack(false, ComboCount);
+        }
+
         PerformCombo(ComboCount); // 콤보 실행
     }
     // 이미 공격 중이라면 -> 입력 예약 (버퍼링)
@@ -205,6 +220,13 @@ void ATSCharacter::HeavyAttack() {
         if (UAnimMontage *Montage = CurrentWeapon->GetHeavyAttackMontage()) {
             CurrentState = ETSCharacterState::Attacking; // 상태를 공격으로 설정
             CurrentWeapon->bIsHeavyAttack = true; // 강공격 플래그 설정 (데미지 배율 적용용)
+            
+            // [AI 학습] 강공격 기록
+            if (PlayerPatternComponent)
+            {
+               PlayerPatternComponent->RegisterAttack(true, 1);
+            }
+            
             PlayAnimMontage(Montage); // 강공격 몽타주 재생
             UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 강공격 시작 (bIsHeavyAttack = true)"));
         }
@@ -290,8 +312,12 @@ void ATSCharacter::PlayHitReaction(AActor *DamageCauser) {
 }
 
 // ========== [패링당함 리액션] ==========
+// ========== [패링당함 리액션] ==========
+// ========== [패링당함 리액션] ==========
 void ATSCharacter::PlayParriedReaction(AActor* Parrier)
 {
+    UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] PlayParriedReaction Called on: %s"), *GetName());
+
     if (CurrentState == ETSCharacterState::Dead) return;
 
     // 공격 중이었다면 공격 중단
@@ -314,21 +340,25 @@ void ATSCharacter::PlayParriedReaction(AActor* Parrier)
     if (ParriedMontage) {
         float Duration = PlayAnimMontage(ParriedMontage);
         if (Duration > 0.0f) {
-            UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 패링 리액션 몽타주 재생: %s"), *ParriedMontage->GetName());
+            UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 패링 리액션 몽타주 재생 성공: %s (Duration: %.2f)"), *ParriedMontage->GetName(), Duration);
             
-            // 몽타주 끝나면 복구
-            if (UAnimInstance* AnimInst = GetMesh()->GetAnimInstance()) {
-                FOnMontageEnded EndDelegate;
-                EndDelegate.BindUObject(this, &ATSCharacter::OnHitReactionEnded);
-                AnimInst->Montage_SetEndDelegate(EndDelegate, ParriedMontage);
-            }
+            // 몽타주 종료 시 상태 복구 (타이머 사용 - 더 안전함)
+            FTimerHandle ResetStateHandle;
+            GetWorldTimerManager().SetTimer(ResetStateHandle, [this]()
+            {
+                if (CurrentState == ETSCharacterState::Stunned)
+                {
+                    SetCharacterState(ETSCharacterState::Idle);
+                }
+            }, Duration, false);
         }
         else {
+             UE_LOG(LogTemp, Error, TEXT("[TSCharacter] 몽타주 재생 실패! (Duration 0) - 슬롯 설정(DefaultGroup 등)이나 블렌드를 확인하세요."));
              SetCharacterState(ETSCharacterState::Idle);
         }
     }
     else {
-        UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] ParriedMontage 미설정 - 넉백만 적용되고 즉시 Idle 복구"));
+        UE_LOG(LogTemp, Error, TEXT("[TSCharacter] ParriedMontage가 비어있습니다! 블루프린트에서 설정해주세요."));
         SetCharacterState(ETSCharacterState::Idle);
     }
 }
@@ -382,8 +412,17 @@ void ATSCharacter::OnHitReactionEnded(UAnimMontage *Montage, bool bInterrupted) 
 }
 
 // ========== [넉백 적용 - 공통 함수] ==========
+// ========== [넉백 적용 - 공통 함수] ==========
 void ATSCharacter::ApplyKnockback(AActor *Source) {
     if (!Source) return;
+
+    // [이동 가능한 피격] 넉백 강도가 약하면(예: 300 이하) 넉백(밀림)을 적용하지 않음
+    // -> 이러면 하체는 계속 움직일 수 있음 (Layered Blend Per Bone 적용 시)
+    if (KnockbackStrength <= 300.0f) 
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 넉백 생략 (강도 %.0f <= 300) - 이동 가능"), KnockbackStrength);
+        return; 
+    }
 
     // 소스가 무기면 소유자(캐릭터) 위치 사용
     AActor *AttackSource = Source->GetOwner() ? Source->GetOwner() : Source;
@@ -397,7 +436,13 @@ void ATSCharacter::ApplyKnockback(AActor *Source) {
     FVector KnockVelocity = KnockDir * KnockbackStrength * DistScale;
     KnockVelocity.Z = KnockbackUpForce;
 
+    // [이동 정지 후 날리기]
+    if (GetCharacterMovement())
+    {
+        GetCharacterMovement()->StopMovementImmediately(); // 기존 이동 멈춤
+    }
     LaunchCharacter(KnockVelocity, true, true);
+    
     UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 넉백 - 거리:%.0f, 스케일:%.1f%%, 강도:%.0f"), Distance, DistScale * 100.f, KnockbackStrength * DistScale);
 
     // 잔여 속도 제거 타이머 (뒤뚱거림 방지)
@@ -410,6 +455,7 @@ void ATSCharacter::StopKnockback() {
     UCharacterMovementComponent* MoveComp = GetCharacterMovement();
     if (!MoveComp) return;
 
+    // 넉백으로 날아간 후 착지 시 미끄러짐 방지
     // 수평 속도만 제거 (Z는 유지 → 자연스러운 착지)
     FVector Vel = MoveComp->Velocity;
     Vel.X = 0.f;
@@ -516,6 +562,12 @@ void ATSCharacter::ContinueCombo() {
             // 3타 넘어가면 콤보 끝 (여기서 리셋하지 않고 몽타주 종료에 맡김)
             return;
 		}
+
+		// [AI 학습] 콤보 연계 기록
+        if (PlayerPatternComponent)
+        {
+            PlayerPatternComponent->RegisterAttack(false, ComboCount);
+        }
 
 		PerformCombo(ComboCount); // 추가 (다음 콤보 실행)
 	}
