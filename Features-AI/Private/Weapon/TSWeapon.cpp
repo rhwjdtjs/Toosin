@@ -126,11 +126,6 @@ void ATSWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *O
                 UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 패링 성공! %s의 패링 윈도우에 걸림"), *OtherChar->GetName());
                 OtherChar->GetCombatComponent()->OnParrySuccess(GetOwner());
 
-                ATSCharacter *AttackerChar = Cast<ATSCharacter>(GetOwner());
-                if (AttackerChar && WeaponDeflectMontage) {
-                    AttackerChar->PlayAnimMontage(WeaponDeflectMontage);
-                    UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 공격자 무기 튕김 몽타주 재생"));
-                }
                 return;
             }
 
@@ -150,11 +145,6 @@ void ATSWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *O
 
                 UGameplayStatics::ApplyDamage(OtherChar, FinalDamage, GetInstigatorController(), this, UDamageType::StaticClass());
 
-                ATSCharacter *AttackerChar = Cast<ATSCharacter>(GetOwner());
-                if (AttackerChar && WeaponDeflectMontage) {
-                    AttackerChar->PlayAnimMontage(WeaponDeflectMontage);
-                    UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 가드 성공 - 공격자 무기 튕김 몽타주 재생"));
-                }
                 return;
             }
         }
@@ -189,10 +179,6 @@ void ATSWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *O
                 UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 가드 성공 (아크 범위 내) - %s"), *TargetChar->GetName());
                 UGameplayStatics::ApplyDamage(OtherActor, FinalDamage, GetInstigatorController(), this, UDamageType::StaticClass());
 
-                ATSCharacter *AttackerChar = Cast<ATSCharacter>(GetOwner());
-                if (AttackerChar && WeaponDeflectMontage) {
-                    AttackerChar->PlayAnimMontage(WeaponDeflectMontage);
-                }
             } else {
                 // 가드 관통 (뒤쪽/옆구리 공격) → 풀 데미지
                 UE_LOG(LogTemp, Warning, TEXT("[TSWeapon] 가드 관통! (아크 범위 밖 = 뒤치기) - %s"), *TargetChar->GetName());

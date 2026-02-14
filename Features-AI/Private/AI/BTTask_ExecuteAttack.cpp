@@ -16,6 +16,12 @@ EBTNodeResult::Type UBTTask_ExecuteAttack::ExecuteTask(UBehaviorTreeComponent& O
 	ATSCharacter* AIChar = Cast<ATSCharacter>(AIController->GetPawn());
 	if (!AIChar) return EBTNodeResult::Failed;
 
+	// [중요] 경직(Stunned) 상태이거나 사망 상태면 공격 불가
+	if (AIChar->GetCharacterState() == ETSCharacterState::Stunned || AIChar->GetCharacterState() == ETSCharacterState::Dead)
+	{
+		return EBTNodeResult::Failed;
+	}
+
 	// [공격 전 회전 보정] 공격 시작 순간에만 타겟을 바라봄 (에임핵 방지)
 	UBlackboardComponent* Blackboard = OwnerComp.GetBlackboardComponent();
 	

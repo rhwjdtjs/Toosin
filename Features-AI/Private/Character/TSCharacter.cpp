@@ -166,7 +166,7 @@ void ATSCharacter::GuardEnd() {
 }
 
 void ATSCharacter::LightAttack() {
-    if (CurrentState == ETSCharacterState::Blocking || CurrentState == ETSCharacterState::Dead) return;
+    if (CurrentState == ETSCharacterState::Blocking || CurrentState == ETSCharacterState::Dead || CurrentState == ETSCharacterState::Stunned) return;
     if (bAttackCooldown) return; // (쿨타임 중이면 공격 불가)
 
     if (!CurrentWeapon) return;
@@ -196,7 +196,7 @@ void ATSCharacter::LightAttack() {
 }
 
 void ATSCharacter::HeavyAttack() {
-    if (CurrentState == ETSCharacterState::Blocking) return;
+    if (CurrentState == ETSCharacterState::Blocking || CurrentState == ETSCharacterState::Stunned) return;
 
     // 강공격은 콤보 없이 단발 실행
     if (CurrentState == ETSCharacterState::Attacking) return;
@@ -285,6 +285,50 @@ void ATSCharacter::PlayHitReaction(AActor *DamageCauser) {
         }
     } else {
         UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] HitReactionMontage 미설정 - 즉시 Idle 복구"));
+        SetCharacterState(ETSCharacterState::Idle);
+    }
+}
+
+// ========== [패링당함 리액션] ==========
+void ATSCharacter::PlayParriedReaction(AActor* Parrier)
+{
+    if (CurrentState == ETSCharacterState::Dead) return;
+
+    // 공격 중이었다면 공격 중단
+    if (CurrentState == ETSCharacterState::Attacking) {
+        ResetCombo();
+    }
+
+    // [경직] Stunned 상태로 전환
+    SetCharacterState(ETSCharacterState::Stunned);
+
+    // [넉백] 패링한 사람으로부터 밀려남
+    if (Parrier) {
+        ApplyKnockback(Parrier);
+    }
+
+    // 기존 몽타주 정지
+    StopAnimMontage();
+
+    // [몽타주 재생]
+    if (ParriedMontage) {
+        float Duration = PlayAnimMontage(ParriedMontage);
+        if (Duration > 0.0f) {
+            UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] 패링 리액션 몽타주 재생: %s"), *ParriedMontage->GetName());
+            
+            // 몽타주 끝나면 복구
+            if (UAnimInstance* AnimInst = GetMesh()->GetAnimInstance()) {
+                FOnMontageEnded EndDelegate;
+                EndDelegate.BindUObject(this, &ATSCharacter::OnHitReactionEnded);
+                AnimInst->Montage_SetEndDelegate(EndDelegate, ParriedMontage);
+            }
+        }
+        else {
+             SetCharacterState(ETSCharacterState::Idle);
+        }
+    }
+    else {
+        UE_LOG(LogTemp, Warning, TEXT("[TSCharacter] ParriedMontage 미설정 - 넉백만 적용되고 즉시 Idle 복구"));
         SetCharacterState(ETSCharacterState::Idle);
     }
 }

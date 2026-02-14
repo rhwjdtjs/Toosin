@@ -108,6 +108,12 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Toosin|Animation")
     class UAnimMontage *HitReactionMontage; // 피격 리액션 몽타주
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Toosin|Animation")
+    class UAnimMontage *ParriedMontage; // 패링당했을 때 리액션 몽타주 (튕겨나감)
+    
+    // [패링당함 리액션] 공격자가 패링당했을 때 호출
+    void PlayParriedReaction(AActor* Parrier);
+
     // [넉백] 피격 시 밀림 설정 (에디터/블루프린트에서 조절 가능)
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Toosin|Combat")
     float KnockbackStrength = 800.f; // 수평 밀림 강도

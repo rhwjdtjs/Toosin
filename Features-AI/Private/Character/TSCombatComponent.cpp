@@ -140,8 +140,28 @@ void UTSCombatComponent::OnParrySuccess(AActor *Attacker) {
     // [가드 상태 해제] 패링 성공 후 가드/AO_Guard 정리 (뒤뚱거림 방지)
     GuardEnd();
 
-    // [패링 넉백]
-    OwnerCharacter->ApplyKnockback(Attacker);
+    // [패링 넉백 & 리액션]
+    if (Attacker)
+    {
+        // 1. 공격자가 바로 캐릭터인지 확인
+        ATSCharacter* AttackerCharacter = Cast<ATSCharacter>(Attacker);
+        
+        // 2. 공격자가 무기(Actor)라면 소유자를 캐릭터로 시도
+        if (!AttackerCharacter && Attacker->GetOwner()) {
+             AttackerCharacter = Cast<ATSCharacter>(Attacker->GetOwner());
+        }
+
+        if (AttackerCharacter)
+        {
+            // 공격자에게 튕겨나가는 모션 재생 요청
+            AttackerCharacter->PlayParriedReaction(OwnerCharacter);
+        }
+        else
+        {
+            // 캐릭터를 못 찾으면 물리적인 넉백만 적용 (기존 로직)
+            OwnerCharacter->ApplyKnockback(Attacker); 
+        }
+    }
 
     UGameplayStatics::SetGlobalTimeDilation(GetWorld(), ParryTimeDilation);
 
