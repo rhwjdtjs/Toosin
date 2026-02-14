@@ -49,36 +49,72 @@ void UBTTask_Guard::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemor
 	UBlackboardComponent* Blackboard = OwnerComp.GetBlackboardComponent();
 	bool bPlayerAttacking = Blackboard ? Blackboard->GetValueAsBool(TEXT("bPlayerAttacking")) : false;
 
-	// 플레이어 공격이 멈추면 가드 해제하고 태스크 종료
+	AAIController* AIController = OwnerComp.GetAIOwner();
+	ATSCharacter* AIChar = Cast<ATSCharacter>(AIController ? AIController->GetPawn() : nullptr);
+
+	if (!AIChar) return;
+
+	// 1. 플레이어 공격이 멈추면 가드 해제하고 태스크 종료
 	if (!bPlayerAttacking)
 	{
-		AAIController* AIController = OwnerComp.GetAIOwner();
-		ATSCharacter* AIChar = Cast<ATSCharacter>(AIController ? AIController->GetPawn() : nullptr);
-		
-		if (AIChar)
+		AIChar->GuardEnd();
+		// UE_LOG(LogTemp, Warning, TEXT("[BTTask_Guard] Guard Ended - Player stopped attacking"));
+		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+		return;
+	}
+
+	// 2. 가드 중 로직 (Active Guard & Guard Restore)
+	if (bPlayerAttacking) 
+	{
+		// [가드 상태 복구] 피격(Stunned) 등으로 가드가 풀렸다가 Idle로 돌아오면 다시 가드
+		if (AIChar->GetCharacterState() == ETSCharacterState::Idle)
 		{
-			AIChar->GuardEnd();
-			UE_LOG(LogTemp, Warning, TEXT("[BTTask_Guard] Guard Ended - Player stopped attacking"));
+			AIChar->GuardStart();
 		}
 
-		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
-	}
-	else
-	{
-		// [가드 재시도 로직]
-		// 플레이어는 공격 중인데, AI가 가드 상태가 아니라면(예: 피격 모션 끝나고 Idle로 돌아왔을 때)
-		// 다시 가드를 올려야 함.
-		AAIController* AIController = OwnerComp.GetAIOwner();
-		ATSCharacter* AIChar = Cast<ATSCharacter>(AIController ? AIController->GetPawn() : nullptr);
-		
-		if (AIChar && AIChar->GetCharacterState() != ETSCharacterState::Blocking)
+		// [Active Guard] 거리 유지 및 회피 이동
+		AActor* TargetActor = Cast<AActor>(Blackboard ? Blackboard->GetValueAsObject(TEXT("PlayerActor")) : nullptr);
+		if (TargetActor)
 		{
-			// 혹시 Stunned 상태가 아니라면 (즉, 움직일 수 있는 상태라면) 가드 시도
-			if (AIChar->GetCharacterState() != ETSCharacterState::Stunned && AIChar->GetCharacterState() != ETSCharacterState::Dead)
+			float Distance = AIChar->GetDistanceTo(TargetActor);
+			
+			// 피격 중(몽타주 재생 중)이면 이동 금지
+			bool bIsMontagePlaying = AIChar->GetMesh()->GetAnimInstance()->IsAnyMontagePlaying();
+
+			// 너무 가까우면 (200cm 이내) 거리 벌리기 시도
+			if (Distance < 200.0f && !bIsMontagePlaying && AIChar->GetCharacterState() == ETSCharacterState::Blocking)
 			{
-				AIChar->GuardStart();
-				// UE_LOG(LogTemp, Warning, TEXT("[BTTask_Guard] Retry Guard (Recovered from Hit?)"));
+				// 이동 빈도 조절
+				if (FMath::RandRange(0, 100) < 2) 
+				{
+					if (FMath::RandBool()) 
+					{
+						FVector DirToTarget = (TargetActor->GetActorLocation() - AIChar->GetActorLocation()).GetSafeNormal();
+						FVector BackStepPos = AIChar->GetActorLocation() - (DirToTarget * 100.0f); 
+						AIController->MoveToLocation(BackStepPos, -1.0f, false, true, false, false); 
+					}
+					else
+					{
+						FVector DirToTarget = (TargetActor->GetActorLocation() - AIChar->GetActorLocation()).GetSafeNormal();
+						FVector RightDir = FVector::CrossProduct(DirToTarget, FVector::UpVector);
+						FVector StrafePos = AIChar->GetActorLocation() + (RightDir * (FMath::RandBool() ? 150.0f : -150.0f));
+						AIController->MoveToLocation(StrafePos, -1.0f, false, true, false, false);
+					}
+				}
 			}
+            
+            // [추가] "내가 공격 중이지만 거리가 멀어졌다" -> 가드 풀고 반격 기회
+            // 단, 피격 중(Stunned)이거나 다른 몽타주 실행 중이면 절대 풀면 안 됨
+            // Controller에서는 350 이상이면 bPlayerAttacking을 false로 만듦.
+            // 여기서도 350~360 정도를 기준으로 잡아서 확실히 멀어지면 풀도록 함.
+            else if (Distance > 360.0f && !bIsMontagePlaying && AIChar->GetCharacterState() == ETSCharacterState::Blocking)
+            {
+                 // 안전 확인 후 가드 해제 -> 태스크 종료 -> BT 재평가 -> ExecuteAttack 실행
+                 AIChar->GuardEnd();
+                 FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+                 // UE_LOG(LogTemp, Warning, TEXT("[BTTask_Guard] Distance > 360, Breaking Guard to Attack"));
+                 return;
+            }
 		}
 	}
 }
